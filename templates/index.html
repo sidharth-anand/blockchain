@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<style>
+		table,
+		td {
+			border: 1px solid #333;
+		}
+
+		thead,
+		tfoot {
+			background-color: #333;
+			color: #fff;
+		}
+	</style>
+</head>
+
+<body>
+
+	<h2>Chain</h2>
+
+	<table>
+		<thead>
+			<tr>
+				<th>Block Index</th>
+				<th>Previous Hash</th>
+				<th>Proof of Work</th>
+				<th>Timestamp</th>
+				<th># of transactions</th>
+			</tr>
+		</thead>
+		<tbody id='chain'>
+
+		</tbody>
+	</table>
+
+	<h2>Verified Transactions</h2>
+
+	<table>
+		<thead>
+			<tr>
+				<th>Transaction #</th>
+				<th>Block Index</th>
+				<th>Sender</th>
+				<th>Recipient</th>
+				<th>Amount</th>
+				<th>Timestamp</th>
+			</tr>
+		</thead>
+		<tbody id="transactions">
+		</tbody>
+	</table>
+
+	<h2>Unverified Transactions</h2>
+
+	<table>
+		<thead>
+			<th>Sender</th>
+			<th>Recipient</th>
+			<th>Amount</th>
+		</thead>
+		<tbody id='unverfied-transactions'>
+
+		</tbody>
+	</table>
+
+	<button id="mine">Mine</button>
+
+	<h2>Add new transaction</h2>
+
+	<form id="transaction-form">
+		<label for="transaction-s">Sender</label>
+		<input id="transaction-s" type="text">
+		<br>
+
+		<label for="transaction-r">Recipient</label>
+		<input id="transaction-r" type="text">
+		<br>
+
+		<label for="transaction-a">Amount</label>
+		<input id="transaction-a" type="number">
+		<br>
+
+		<button type="submit">Add Transaction</button>
+	</form>
+
+	<h2>Linked Nodes</h2>
+
+	<ul id="nodes"></ul>
+
+	<h2>Register node</h2>
+	<form id='node-form'>
+		<label for='node-name'>Neighbour URL</label>
+		<input id='node-name' type='url'>
+		<br>
+
+		<button type='submit'>Register</button>
+	</form>
+
+	<h2>Resolve</h2>
+	<button id="resolve">Resolve Conflicts</button>
+
+	<p id="resolve-message"></p>
+
+	<script>
+		const transactions = [];
+		const unverifiedTransactions = [];
+
+		function updateTransactions(chain) {
+			fetch('/chain').then(response => response.json()).then(data => {
+				transactions.length = 0;
+
+				let chainHTML = ``;
+
+				for (let block of data.chain) {
+					chainHTML += `
+						<tr>
+							<td>${block.index}</td>
+							<td>${block.previous_hash}</td>
+							<td>${block.proof}</td>
+							<td>${block.timestamp}</td>
+							<td>${block.transactions.length}</td>
+						</tr>
+					`;
+
+					if (block.transactions.length) {
+						for (let transaction of block.transactions) {
+							transactions.push({ ...transaction, timestamp: block.timestamp, block: block.index, index: transactions.length + 1 });
+						}
+					}
+
+				}
+
+				let verifiedTransactionHTML = ``;
+
+				for (let transaction of transactions) {
+					verifiedTransactionHTML += `
+					<tr>
+						<td>${transaction.index}</td>
+						<td>${transaction.block}</td>
+						<td>${transaction.sender}</td>
+						<td>${transaction.recipient}</td>
+						<td>${transaction.amount}</td>
+						<td>${transaction.timestamp}</td>
+					</tr>
+					`;
+				}
+
+				document.getElementById('transactions').innerHTML = verifiedTransactionHTML;	
+				document.getElementById('chain').innerHTML = chainHTML;
+			});
+		}
+		
+		function addTransaction() {
+			const sender = document.getElementById('transaction-s').value;
+			const recipient = document.getElementById('transaction-r').value;
+			const amount = parseInt(document.getElementById('transaction-a').value);
+
+			document.getElementById('transaction-s').value = '';
+			document.getElementById('transaction-a').value = '';
+			document.getElementById('transaction-r').value = '';
+
+			const unverifiedTransactionHTML = `
+				<tr>
+					<td>${sender}</td>
+					<td>${recipient}</td>
+					<td>${amount}</td>
+				</tr>
+			`;
+
+			unverifiedTransactions.push({
+				sender, 
+				recipient,
+				amount
+			});
+
+			document.getElementById('unverfied-transactions').innerHTML += unverifiedTransactionHTML;
+
+			const myHeaders = new Headers();
+			myHeaders.append("Content-Type", "application/json");
+
+			const raw = JSON.stringify({sender, recipient, amount});
+
+			var requestOptions = {
+				method: 'POST',
+				headers: myHeaders,
+				body: raw,
+				redirect: 'follow'
+			};
+
+			fetch("/transactions/new", requestOptions)
+				.then(response => response.text())
+				.then(result => console.log(result))
+				.catch(error => console.log('error', error));
+		}
+
+		function mine() {
+			fetch("/mine")
+				.then(response => response.text())
+				.then(result => {
+					console.log(result);
+					updateTransactions();
+					document.getElementById('unverfied-transactions').innerHTML = '';
+				})
+				.catch(error => console.log('error', error));
+		}
+
+		function updateNodes() {
+			fetch('/nodes').then(response => response.json()).then(data => {
+				let nodesHTML = '';
+
+				for(let node of data) {
+					nodesHTML += `<li>${node}</li>`;
+				}
+
+				document.getElementById('nodes').innerHTML = nodesHTML;
+			});
+		}
+
+		function resolve() {
+			fetch('/nodes/resolve').then(response => response.json()).then(data => {
+				document.getElementById('resolve-message').innerText = data.message;
+				updateTransactions();
+			});
+		}
+
+		function registerNode() {
+			const myHeaders = new Headers();
+			myHeaders.append("Content-Type", "application/json");
+
+			const nodeName = document.getElementById('node-name').value;
+			document.getElementById('node-name').value = '';
+
+			const raw = JSON.stringify({"nodes":[nodeName]});
+
+			var requestOptions = {
+				method: 'POST',
+				headers: myHeaders,
+				body: raw,
+				redirect: 'follow'
+			};
+
+			fetch("/nodes/register", requestOptions)
+				.then(response => response.text())
+				.then(result => {
+					console.log(result);
+					document.getElementById('nodes').innerHTML += `<li>${nodeName}</li>`;
+				})
+				.catch(error => console.log('error', error));
+		}
+
+		document.getElementById('transaction-form').addEventListener('submit', e => {
+			e.preventDefault();
+			addTransaction();
+		});
+
+		document.getElementById('node-form').addEventListener('submit', e => {
+			e.preventDefault();
+			registerNode();
+		});
+
+		document.getElementById('mine').addEventListener('click', mine);
+
+		document.getElementById('resolve').addEventListener('click', resolve);
+
+		(function(){
+			updateTransactions();
+			updateNodes();
+		})();
+
+	</script>
+</body>
+
+</html>
