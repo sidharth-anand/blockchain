@@ -5,7 +5,8 @@ from urllib.parse import urlparse
 from uuid import uuid4
 
 import requests
-from flask import Flask, jsonify, request, render_template
+from flask import Flask, jsonify, request, render_template, send_from_directory
+from flask_cors import CORS
 
 
 class Blockchain:
@@ -20,7 +21,7 @@ class Blockchain:
     def register_node(self, address):
         """
         Add a new node to the list of nodes
-        :param address: Address of node. Eg. 'http://192.168.0.5:5000'
+        :param address: Address of node. Eg. 'http://192.168.0.5:4000'
         """
 
         parsed_url = urlparse(address)
@@ -185,6 +186,9 @@ class Blockchain:
 # Instantiate the Node
 app = Flask(__name__)
 
+# Handle CORS
+CORS(app)
+
 # Generate a globally unique address for this node
 node_identifier = str(uuid4()).replace('-', '')
 
@@ -284,14 +288,18 @@ def consensus():
     return jsonify(response), 200
 
 @app.route('/', methods=['GET'])
-def home():
-	return render_template('index.html')
+def base():
+	return send_from_directory('web/public', 'index.html')
+
+@app.route("/<path:path>")
+def home(path):
+    return send_from_directory('web/public', path)
 
 if __name__ == '__main__':
     from argparse import ArgumentParser
 
     parser = ArgumentParser()
-    parser.add_argument('-p', '--port', default=5000, type=int, help='port to listen on')
+    parser.add_argument('-p', '--port', default=4000, type=int, help='port to listen on')
     args = parser.parse_args()
     port = args.port
 
