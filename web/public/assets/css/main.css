@@ -1,0 +1,28 @@
+.content-card {
+	height: 432.5px !important;
+}
+
+.content-card-overflow {
+	overflow-x: hidden !important;
+}
+
+@media only screen and (max-width: 600px) {
+	.content-card-overflow {
+		overflow: scroll !important;
+	}
+}
+
+.nav-btn-border-transparent {
+	border: 1px solid transparent !important;
+}
+
+.modal-dark {
+	background: rgb(24, 24, 33);
+}
+
+.alert-z-100 {
+	z-index: 1000 !important;
+	left: 50%;
+	top: 10px;
+	transform: translateX(-50%);
+}
