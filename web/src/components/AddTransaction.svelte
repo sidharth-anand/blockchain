@@ -35,7 +35,9 @@
 				return [...data, { sender, recipient, amount }];
 			});
 		} catch (err) {
-			console.log(err);
+			showAlert.update(() => true);
+			alertType.update(() => 'danger');
+			alertMessage.update(() => 'Unable to make a transaction');
 		}
 
 		sender = '';

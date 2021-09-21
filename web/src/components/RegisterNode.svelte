@@ -33,7 +33,9 @@
 				return [...data.total_nodes];
 			});
 		} catch (err) {
-			console.log(err);
+			showAlert.update(() => true);
+			alertType.update(() => 'danger');
+			alertMessage.update(() => 'Could not register node');
 		}
 		inputField = '';
 		loading = false;

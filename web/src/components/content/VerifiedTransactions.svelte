@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { chains, transactions } from '../../store/transactions';
+	import { alertMessage, alertType, showAlert } from '../../store/alert';
 	import { onMount } from 'svelte';
 	import { SERVER_URL } from '../../constants';
 
@@ -28,11 +29,11 @@
 				}
 			});
 
-			console.log({ t });
-
 			transactions.update(() => t);
 		} catch (err) {
-			console.log(err);
+			showAlert.update(() => true);
+			alertType.update(() => 'danger');
+			alertMessage.update(() => 'Unable to fetch data');
 		}
 	});
 </script>

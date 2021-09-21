@@ -26,7 +26,6 @@
 		try {
 			const res = await fetch(`${SERVER_URL}/nodes/resolve`);
 			const data = await res.json();
-			console.log(data);
 			chains.update(() => {
 				if (data.new_chain) {
 					return data.new_chain;
@@ -49,7 +48,6 @@
 
 			transactions.update(() => t);
 		} catch (err) {
-			console.log({ ...err });
 			errorText = 'something went wrong';
 		}
 
