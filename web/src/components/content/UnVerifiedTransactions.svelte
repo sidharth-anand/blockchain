@@ -1,6 +1,6 @@
 <script>
 	import { SERVER_URL } from '../../constants';
-
+	import { alertMessage, alertType, showAlert } from '../../store/alert';
 	import { unverifiedTransactions } from '../../store/transactions';
 
 	const mine = async () => {
@@ -16,7 +16,9 @@
 				return [];
 			});
 		} catch (err) {
-			console.log(err);
+			showAlert.update(() => true);
+			alertType.update(() => 'danger');
+			alertMessage.update(() => 'Something went wrong');
 		}
 	};
 </script>

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { chains } from './../../store/transactions';
 	import { onMount } from 'svelte';
+	import { alertMessage, alertType, showAlert } from '../../store/alert';
 	import { SERVER_URL } from '../../constants';
 
 	onMount(async () => {
@@ -17,7 +18,9 @@
 				return data.chain;
 			});
 		} catch (err) {
-			console.log(err);
+			showAlert.update(() => true);
+			alertType.update(() => 'danger');
+			alertMessage.update(() => 'Something went wrong');
 		}
 	});
 </script>
