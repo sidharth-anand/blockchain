@@ -37,13 +37,25 @@ This command runs the blockchain node on PORT = 4000 as default, so ensure your 
   python3 main.py
 ```
 
-Launch http://localhost:4000/ in your browser to see the Web App running
-
 To create a new node in the blockchain
 ```bash
   python3 main.py --port=PORT
 ```
 PORT = New port address for the node to instanstiate
+
+### Functionality
+After running the main.py
+
+Launch http://localhost:4000/ in your browser to see the Web App running
+
+There are five options on the Web App at first glance.
+1. Chain: List of Blocks with their properties are listed here
+2. Verified Transactions: List of all verified transactions are listed here
+3. Unverified Transactions: Transactions that are not verified are listed here
+4. Linked Nodes: All the registered nodes of the blockchain, which can be registered from the registered node block on the website, are listed here
+5. Resolve Conflicts: Resolve Conflicts by clicking here
+
+There is a place for Add a new transaction, where you have to add the Sender, Recipient, and Amount of the transaction, and this transaction goes into the Unverified Transactions list. You can mine on the Unverified Transactions page to view the transactions on the Verified Transactions Page
 
 ### Team Details
 ###### Group Number : G56
