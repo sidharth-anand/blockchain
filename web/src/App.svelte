@@ -105,3 +105,14 @@
 		</div>
 	</div>
 </main>
+
+<footer class="text-center">
+	Developed by
+
+	<a href="https://github.com/sreekarnv">Sreekar V Nutulapati</a>,
+	<a href="https://github.com/sidharth-anand/blockchain.git">
+		Sidharth Anand
+	</a>
+	&
+	<a href="https://github.com/saiankit"> Sai Ankit B </a>
+</footer>
