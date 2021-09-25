@@ -23,13 +23,6 @@ def mine():
     last_block = blockchain.last_block
     proof = blockchain.generate_proof(last_block)
 
-    # Since we are computing the proof reward has to be assigned to us
-    blockchain.create_new_transaction(
-        sender="0",
-        recipient=node_identifier,
-        amount=1,
-    )
-
     # New block is added to the chain
     previous_hash = blockchain.hash(last_block)
     block = blockchain.create_new_block(proof, previous_hash)
