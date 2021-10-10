@@ -1,8 +1,11 @@
 import hashlib
 import json
+import requests
+
 from time import time
 from urllib.parse import urlparse
-import requests
+
+from block import Block
 
 class Blockchain:
     def __init__(self):
@@ -33,19 +36,12 @@ class Blockchain:
         :return: Block Object which is generated
         """
 
-        new_block = {
-            'index': len(self.chain) + 1,
-            'timestamp': time(),
-            'transactions': self.unverified_transactions,
-            'proof': proof,
-            'previous_hash': previous_hash or self.hash(self.chain[-1]),
-        }
-        self.chain.append(new_block)
+        self.chain.append(Block(len(self.chain) + 1, proof, previous_hash or self.chain[-1].hash(), self.unverified_transactions))
 
         # Unverified Transactions list is reset back after mining
         self.unverified_transactions = []
 
-        return new_block
+        return self.chain[-1]
 
     def create_new_transaction(self, sender, recipient, amount):
         """
@@ -66,7 +62,7 @@ class Blockchain:
             'amount': amount,
         })
 
-        return self.last_block['index'] + 1
+        return self.last_block.index + 1
 
     def register_node(self, address):
         """
@@ -97,12 +93,12 @@ class Blockchain:
             block = chain[current_index]
 
             # Check that the hash of the block is correct
-            last_block_hash = self.hash(last_block)
-            if block['previous_hash'] != last_block_hash:
+            last_block_hash = last_block.hash()
+            if block.previous_hash != last_block_hash:
                 return False
 
             # Check that the Proof is correct based on our Consensus Algorithm
-            if not self.validate_proof(last_block['proof'], block['proof'], last_block_hash):
+            if not self.validate_proof(last_block.proof_of_work, block.proof_of_work, last_block_hash):
                 return False
 
             last_block = block
@@ -144,19 +140,6 @@ class Blockchain:
     def last_block(self):
         return self.chain[-1]
 
-    @staticmethod
-    def hash(block):
-        """
-        Creates a SHA-256 hash for the block based on the contents inside it
-        :param block: Block
-        """
-
-        # The contents of the Dictionary has to be ordered inorder to have consitent hashing across the chain
-        # Before hashing, the dictionary is sorted based on keys
-
-        block_string = json.dumps(block, sort_keys=True).encode()
-        return hashlib.sha256(block_string).hexdigest()
-
     def generate_proof(self, last_block):
         """
          - Let p be the proof of previous block
@@ -169,8 +152,8 @@ class Blockchain:
         :return: Valid Proof
         """
 
-        previous_block_proof = last_block['proof'] #p
-        previous_block_hash = self.hash(last_block) #h
+        previous_block_proof = last_block.proof_of_work #p
+        previous_block_hash = last_block.hash() #h
 
         proof = 0 #n
         while self.validate_proof(previous_block_proof, proof, previous_block_hash) is False:
