@@ -1,11 +1,13 @@
 import hashlib
 import json
 import requests
+import typing
 
 from time import time
 from urllib.parse import urlparse
 
-from block import Block
+from blockchain.block import Block
+from blockchain.transaction import Transaction
 
 class Blockchain:
     def __init__(self):
@@ -16,12 +18,11 @@ class Blockchain:
          - Set is empty set which is made such that there won't be any duplicate node entries to the network
          - Genesis Block is created which acts the first block in the chain with previous_hash = 1 and proof = 100
         """
-        self.unverified_transactions = []
-        self.chain = []
+        self.unverified_transactions: typing.List[Transaction] = []
+        self.chain: typing.List[Block] = [Block.genesis()]
         self.nodes = set()
-        self.create_new_block(previous_hash='1', proof=100)
 
-    def create_new_block(self, proof, previous_hash):
+    def create_new_block(self, proof: int):
         """
         Create a new Block in the Blockchain
         <model> Block
@@ -36,14 +37,14 @@ class Blockchain:
         :return: Block Object which is generated
         """
 
-        self.chain.append(Block(len(self.chain) + 1, proof, previous_hash or self.chain[-1].hash(), self.unverified_transactions))
+        self.chain.append(Block(len(self.chain) + 1, proof, self.chain[-1].hash(), self.unverified_transactions))
 
         # Unverified Transactions list is reset back after mining
         self.unverified_transactions = []
 
         return self.chain[-1]
 
-    def create_new_transaction(self, sender, recipient, amount):
+    def create_new_transaction(self, sender: str, recipient: str, amount: int):
         """
         Creates a new transaction to go into the next mined Block
         <model> Transaction
@@ -56,11 +57,7 @@ class Blockchain:
         :param amount: Transaction Amount
         :return: We return the index of the block that contains the transaction
         """
-        self.unverified_transactions.append({
-            'sender': sender,
-            'recipient': recipient,
-            'amount': amount,
-        })
+        self.unverified_transactions.append(Transaction(sender, recipient, amount))
 
         return self.last_block.index + 1
 

@@ -1,0 +1,3 @@
+END_OF_MESSAGE = 0x04.to_bytes(1, 'big')
+MESSAGE_ENCODING = 'utf-8'
+BUFFER_SIZE = 4096

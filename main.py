@@ -1,17 +1,40 @@
+import time
+import signal
+import urllib.parse
+import requests
+
 from uuid import uuid4
 from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
-from blockchain import Blockchain
 
+from p2p.node import P2PNode
+from p2p.events import P2PEvents
+
+from blockchain.blockchain import Blockchain
 
 # Instantiate the Node
 app = Flask(__name__)
-
 # Handle CORS
 CORS(app)
 
 # Generate an unique address for this node
 node_identifier = str(uuid4()).replace('-', '')
+
+p2pNode = p2pNode = P2PNode()
+
+class ExitFromApp(Exception):
+    pass
+
+def handle_p2p_events(event, data):
+    if event == P2PEvents.CONNECTED:
+        print('Connected with: ', data)
+    elif event == P2PEvents.MESSAGE_RECEIVED:
+        print('Received message: ', data)
+        if(data['event'] == 'register_node') and data['host'] and data['port']:
+            p2pNode.connect(host=data['host'], port=data['port'])
+
+def shutdown(signal, frame):
+    raise ExitFromApp
 
 # Instantiate the Blockchain
 blockchain = Blockchain()
@@ -24,8 +47,7 @@ def mine():
     proof = blockchain.generate_proof(last_block)
 
     # New block is added to the chain
-    previous_hash = blockchain.hash(last_block)
-    block = blockchain.create_new_block(proof, previous_hash)
+    block = blockchain.create_new_block(proof)
 
     response = {
         'message': "New Block Added",
@@ -40,6 +62,9 @@ def mine():
 @app.route('/transactions/new', methods=['POST'])
 def create_new_transaction():
     values = request.get_json()
+
+    if values is None:
+        return None, 401
 
     required = ['sender', 'recipient', 'amount']
     if not all(k in values for k in required):
@@ -65,23 +90,58 @@ def full_chain():
 def register_nodes():
     values = request.get_json()
 
+    if values is None:
+        return None, 400
+
     nodes = values.get('nodes')
     if nodes is None:
         return "Error: Please supply a valid list of nodes", 400
 
     for node in nodes:
-        blockchain.register_node(node)
+        print(node)
+        requests.post(node + '/nodes/broadcast', json={
+            'host': p2pNode.host,
+            'port': p2pNode.port
+        })
 
     response = {
         'message': 'New nodes have been added',
         'total_nodes': list(blockchain.nodes),
     }
+
     return jsonify(response), 201
 
 
+@app.route('/nodes/broadcast', methods=['POST'])
+def broadcast_node():
+    values = request.get_json()
+
+    print(values)
+
+    if not values:
+        return 'Could not find values', 401
+    
+    if not values['host'] or not values['port']:
+        return 'Specify the node to broadcast', 401
+    
+    host = values['host']
+    port = values['port']
+
+    p2pNode.broadcast({
+        'event': 'register_node',
+        'host': host,
+        'port': port
+    })
+
+    nodes_list = p2pNode.connection_urls
+
+    p2pNode.connect(host, port)
+
+    return jsonify(nodes_list), 200
+
 @app.route('/nodes', methods=['GET'])
 def get_nodes():
-    return jsonify(list(blockchain.nodes)), 200
+    return jsonify(p2pNode.connection_urls), 200
 
 
 @app.route('/nodes/resolve', methods=['GET'])
@@ -116,8 +176,27 @@ if __name__ == '__main__':
     from argparse import ArgumentParser
 
     parser = ArgumentParser()
-    parser.add_argument('-p', '--port', default=4000, type=int, help='port to listen on')
-    args = parser.parse_args()
-    port = args.port
 
-    app.run(host='0.0.0.0', port=port)
+    parser.add_argument('-p', '--port', default=4000, type=int, help='port to listen on')
+    parser.add_argument('-s', '--socket', default=4001, type=int, help='p2p socket port to listen on')
+
+    args = parser.parse_args()
+
+    port = args.port
+    socket_port = args.socket
+
+    signal.signal(signal.SIGINT, shutdown)
+
+    try:
+        p2pNode.init(host='0.0.0.0', port=socket_port, callback=handle_p2p_events)
+        p2pNode.start()
+        
+        app.run(host='0.0.0.0', port=port, debug=True, use_reloader=False)
+
+        while True:
+            continue
+    
+    except ExitFromApp:
+        if p2pNode is not None:
+            p2pNode.terminate_flag.set()
+            p2pNode.join()
