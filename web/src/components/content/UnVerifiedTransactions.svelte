@@ -1,7 +1,22 @@
 <script>
+	import { onMount } from 'svelte';
 	import { SERVER_URL } from '../../constants';
 	import { alertMessage, alertType, showAlert } from '../../store/alert';
 	import { unverifiedTransactions } from '../../store/transactions';
+
+	let error = false;
+
+	onMount(async () => {
+		try {
+			const res = fetch(`${SERVER_URL}/transactions/pool`);
+			const data = await res.json();
+			unverifiedTransactions.update(() => {
+				return [...data]
+			});
+		} catch(err) {
+			error = true;
+		}
+	})
 
 	const mine = async () => {
 		try {

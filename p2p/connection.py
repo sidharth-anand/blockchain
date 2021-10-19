@@ -4,8 +4,8 @@ import threading
 import json
 import typing
 
-from .constants import MESSAGE_ENCODING, END_OF_MESSAGE, BUFFER_SIZE
-from .events import P2PEvents
+from p2p.constants import MESSAGE_ENCODING, END_OF_MESSAGE, BUFFER_SIZE
+from p2p.events import P2PEvents
 
 class P2PConnection(threading.Thread):
     def __init__(self, sock: socket.socket, host: str, port: int, callback: typing.Callable[[P2PEvents, typing.Any], None] = None, original_host: str = None, original_port: int = None) -> None:

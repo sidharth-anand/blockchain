@@ -3,9 +3,9 @@ import time
 import threading
 import typing
 
-from .connection import P2PConnection
-from .constants import MESSAGE_ENCODING, BUFFER_SIZE
-from .events import P2PEvents
+from p2p.connection import P2PConnection
+from p2p.constants import MESSAGE_ENCODING, BUFFER_SIZE
+from p2p.events import P2PEvents
 
 class P2PNode(threading.Thread):
     def __init__(self) -> None:
@@ -48,9 +48,16 @@ class P2PNode(threading.Thread):
         for connection in self.connections:
             self.send_to_node(connection, data)
     
-    def send_to_node(self, node, data):
-        node.send(data)
+    def send_to_node(self, connection, data):
+        connection.send(data)
     
+    def get_connection(self, host: str, port: int):
+        for connection in self.connections:
+            if (host == connection.host and port == connection.port) or (host == connection.original_host and port == connection.original_port):
+                return connection
+        
+        return None
+
     def handler(self, event, data):
         print(event, data)
 

@@ -4,7 +4,7 @@ import urllib.parse
 import requests
 
 from uuid import uuid4
-from flask import Flask, jsonify, request, send_from_directory
+from flask import Flask, json, jsonify, request, send_from_directory
 from flask_cors import CORS
 
 from p2p.node import P2PNode
@@ -30,8 +30,14 @@ def handle_p2p_events(event, data):
         print('Connected with: ', data)
     elif event == P2PEvents.MESSAGE_RECEIVED:
         print('Received message: ', data)
-        if(data['event'] == 'register_node') and data['host'] and data['port']:
+        if data['event'] == 'register_node' and data['host'] and data['port']:
             p2pNode.connect(host=data['host'], port=data['port'])
+        elif data['event'] == 'new_transaction':
+            blockchain.create_new_transaction(data['sender'], data['recipient'], data['amount'])
+        elif data['event'] == 'init_chain':
+            blockchain.chain = data['chain']
+        elif data['event'] == 'init_pool':
+            blockchain.unverified_transactions = data['pool']
 
 def shutdown(signal, frame):
     raise ExitFromApp
@@ -73,9 +79,19 @@ def create_new_transaction():
     # Create a new Transaction for the block
     index = blockchain.create_new_transaction(values['sender'], values['recipient'], values['amount'])
 
+    p2pNode.broadcast({
+        'event': 'new_transaction',
+        'sender': values['sender'],
+        'recipient': values['recipient'],
+        'amount': values['amount']
+    })
+
     response = {'message': f'Transaction will be added to Block {index}'}
     return jsonify(response), 201
 
+@app.route('/transactions/pool', methods=['GET'])
+def unverified_transactions():
+    return jsonify(blockchain.unverified_transactions), 200
 
 @app.route('/chain', methods=['GET'])
 def full_chain():
@@ -98,7 +114,6 @@ def register_nodes():
         return "Error: Please supply a valid list of nodes", 400
 
     for node in nodes:
-        print(node)
         requests.post(node + '/nodes/broadcast', json={
             'host': p2pNode.host,
             'port': p2pNode.port
@@ -136,6 +151,17 @@ def broadcast_node():
     nodes_list = p2pNode.connection_urls
 
     p2pNode.connect(host, port)
+    
+    connected_node = p2pNode.get_connection(host, port)
+
+    p2pNode.send_to_node(connected_node, {
+        'event': 'init_chain',
+        'chain': blockchain.chain
+    })
+    p2pNode.send_to_node(connected_node, {
+        'event': 'init_pool',
+        'pool': blockchain.unverified_transactions
+    })
 
     return jsonify(nodes_list), 200
 
