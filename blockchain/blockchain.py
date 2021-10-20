@@ -20,7 +20,8 @@ class Blockchain:
         """
         self.unverified_transactions: typing.List[Transaction] = []
         self.chain: typing.List[Block] = [Block.genesis()]
-        self.nodes = set()
+
+        self.block_mining = False
 
     def create_new_block(self, proof: int):
         """
@@ -61,21 +62,6 @@ class Blockchain:
 
         return self.last_block.index + 1
 
-    def register_node(self, address):
-        """
-        Add a new node to the list of nodes
-        :param address: Address of node added
-        """
-
-        parsed_url = urlparse(address)
-        if parsed_url.netloc:
-            self.nodes.add(parsed_url.netloc)
-        elif parsed_url.path:
-            self.nodes.add(parsed_url.path)
-        else:
-            raise ValueError('Invalid Node URL')
-
-
     def valid_chain(self, chain):
         """
         Determine if a given blockchain as input is valid
@@ -103,39 +89,28 @@ class Blockchain:
 
         return True
 
-    def resolve_conflicts(self):
-        """
-        This is our consensus algorithm, it resolves conflicts
-        by replacing our chain with the longest one in the network.
-        :return: True if our chain was replaced, False if not
-        """
+    @property
+    def last_block(self) -> Block:
+        return self.chain[-1]
 
-        neighbours = self.nodes
-        new_chain = None
-        chain_max_length = len(self.chain)
+    def replace_chain(self, chain_data: typing.List[dict]):
+        new_chain: typing.List[Block] = []
 
-        # Verify the chains from all the nodes in our network
-        for node in neighbours:
-            response = requests.get(f'http://{node}/chain')
+        for block in chain_data:
+            new_chain.append(Block.from_dict(block))
 
-            if response.status_code == 200:
-                length = response.json()['length']
-                chain = response.json()['chain']
-
-                if length > chain_max_length and self.valid_chain(chain):
-                    chain_max_length = length
-                    new_chain = chain
-
-        # Replace our chain if we discovered a new, valid chain longer than ours
-        if new_chain:
+        if self.valid_chain(new_chain):
             self.chain = new_chain
             return True
-
+        
         return False
 
-    @property
-    def last_block(self):
-        return self.chain[-1]
+
+    def replace_pool(self, new_pool: typing.List[dict]):
+        self.unverified_transactions = []
+
+        for transaction in new_pool:
+            self.unverified_transactions.append(Transaction.from_dict(transaction))
 
     def generate_proof(self, last_block):
         """
@@ -153,8 +128,11 @@ class Blockchain:
         previous_block_hash = last_block.hash() #h
 
         proof = 0 #n
-        while self.validate_proof(previous_block_proof, proof, previous_block_hash) is False:
+        while self.validate_proof(previous_block_proof, proof, previous_block_hash) is False and not self.block_mining:
             proof += 1
+
+        if self.block_mining == True:
+            return None
 
         return proof
 

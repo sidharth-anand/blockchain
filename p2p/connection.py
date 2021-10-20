@@ -40,7 +40,7 @@ class P2PConnection(threading.Thread):
                 self.sock.sendall(json_data)
                 
             except TypeError as type_error:
-                print('error')
+                print('Error:', type_error)
             
             except Exception as e:
                 self.stop()
@@ -75,7 +75,7 @@ class P2PConnection(threading.Thread):
             chunk = b''
 
             try:
-                chunk = self.sock.recv(4096)
+                chunk = self.sock.recv(BUFFER_SIZE)
             
             except socket.timeout:
                 pass
@@ -94,7 +94,7 @@ class P2PConnection(threading.Thread):
                     if self.callback is not None:
                         self.callback(P2PEvents.MESSAGE_RECEIVED, self.parse_packet(packet))
 
-                    message_end = buffer.find(message_end)
+                    message_end = buffer.find(END_OF_MESSAGE)
                 
             time.sleep(0.01)
 

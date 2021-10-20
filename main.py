@@ -10,6 +10,7 @@ from flask_cors import CORS
 from p2p.node import P2PNode
 from p2p.events import P2PEvents
 
+from blockchain.block import Block
 from blockchain.blockchain import Blockchain
 
 # Instantiate the Node
@@ -35,9 +36,19 @@ def handle_p2p_events(event, data):
         elif data['event'] == 'new_transaction':
             blockchain.create_new_transaction(data['sender'], data['recipient'], data['amount'])
         elif data['event'] == 'init_chain':
-            blockchain.chain = data['chain']
+            blockchain.replace_chain(data['chain'])
         elif data['event'] == 'init_pool':
-            blockchain.unverified_transactions = data['pool']
+            blockchain.replace_pool(data['pool'])
+        elif data['event'] == 'block_created':
+            blockchain.block_mining = True
+            
+            new_chain = blockchain.chain
+            new_chain.append(Block(len(new_chain) + 1, data['proof'], new_chain[-1].hash(), blockchain.unverified_transactions))
+
+            if blockchain.valid_chain(new_chain):
+                blockchain.create_new_block(data['proof'])
+
+            blockchain.block_mining = False
 
 def shutdown(signal, frame):
     raise ExitFromApp
@@ -52,16 +63,25 @@ def mine():
     last_block = blockchain.last_block
     proof = blockchain.generate_proof(last_block)
 
+    if proof is None:
+        return jsonify('Another node completed mining before this node'), 200
+
     # New block is added to the chain
     block = blockchain.create_new_block(proof)
 
+    p2pNode.broadcast({
+        'event': 'block_created',
+        'proof': proof
+    })
+
     response = {
         'message': "New Block Added",
-        'index': block['index'],
-        'transactions': block['transactions'],
-        'proof': block['proof'],
-        'previous_hash': block['previous_hash'],
+        'index': block.index,
+        'transactions': block.transactions,
+        'proof': block.proof_of_work,
+        'previous_hash': block.previous_hash,
     }
+
     return jsonify(response), 200
 
 
@@ -121,7 +141,6 @@ def register_nodes():
 
     response = {
         'message': 'New nodes have been added',
-        'total_nodes': list(blockchain.nodes),
     }
 
     return jsonify(response), 201
@@ -168,25 +187,6 @@ def broadcast_node():
 @app.route('/nodes', methods=['GET'])
 def get_nodes():
     return jsonify(p2pNode.connection_urls), 200
-
-
-@app.route('/nodes/resolve', methods=['GET'])
-def consensus():
-    replaced = blockchain.resolve_conflicts()
-
-    if replaced:
-        response = {
-            'message': 'Conflicts resolved and chain replaced',
-            'new_chain': blockchain.chain
-        }
-    else:
-        response = {
-            'message': 'Our chain is authoritative',
-            'chain': blockchain.chain
-        }
-
-    return jsonify(response), 200
-
 
 @app.route('/', methods=['GET'])
 def base():

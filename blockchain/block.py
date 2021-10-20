@@ -22,3 +22,13 @@ class Block(dict):
     @staticmethod
     def genesis():
         return Block(1, 0, '0')
+
+    @staticmethod
+    def from_dict(block_data: dict):
+        block = Block(block_data['index'], block_data['proof_of_work'], block_data['previous_hash'])
+        block.timestamp = block_data['timestamp']
+
+        for transaction in block_data['transactions']:
+            block.transactions.append(Transaction.from_dict(transaction))
+        
+        return block
