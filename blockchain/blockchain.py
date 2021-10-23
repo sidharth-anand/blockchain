@@ -1,13 +1,12 @@
 import hashlib
-import json
-import requests
 import typing
-
-from time import time
-from urllib.parse import urlparse
+import time
 
 from blockchain.block import Block
-from blockchain.transaction import Transaction
+from blockchain.transaction import Transaction, UnspentTransactionOut
+from blockchain.constants import BLOCK_GENERATION_INTERVAL, DIFFICULTY_ADJUSTMENT_ITNERVAL
+
+from wallet.wallet import Wallet
 
 class Blockchain:
     def __init__(self):
@@ -18,12 +17,18 @@ class Blockchain:
          - Set is empty set which is made such that there won't be any duplicate node entries to the network
          - Genesis Block is created which acts the first block in the chain with previous_hash = 1 and proof = 100
         """
-        self.unverified_transactions: typing.List[Transaction] = []
+        self.transaction_pool: typing.List[Transaction] = []
         self.chain: typing.List[Block] = [Block.genesis()]
+
+        unspent_transaction_outs = Transaction.process_transactions(self.chain[0].transactions, [], self.chain[0].index)
+        if unspent_transaction_outs is not None:
+            self.unspent_transaction_outs: typing.List[UnspentTransactionOut] = unspent_transaction_outs
+        else:
+            self.unspent_transaction_outs: typing.List[UnspentTransactionOut] = []
 
         self.block_mining = False
 
-    def create_new_block(self, proof: int):
+    def create_new_block(self, wallet: Wallet):
         """
         Create a new Block in the Blockchain
         <model> Block
@@ -38,14 +43,42 @@ class Blockchain:
         :return: Block Object which is generated
         """
 
-        self.chain.append(Block(len(self.chain) + 1, proof, self.chain[-1].hash(), self.unverified_transactions))
+        coinbase_transaction = Transaction.generation_coinbase_transaction(wallet.public_key.toString(), self.last_block.index + 1)
+        new_block = self.create_new_block_raw(wallet, [coinbase_transaction] + self.transaction_pool)
 
-        # Unverified Transactions list is reset back after mining
-        self.unverified_transactions = []
+        if new_block is not None:
+            # Unverified Transactions list is reset back after mining
+            self.transaction_pool = []
 
-        return self.chain[-1]
+            return self.last_block
+        else:
+            return None
 
-    def create_new_transaction(self, sender: str, recipient: str, amount: int):
+    def create_new_block_raw(self, wallet: Wallet, transactions: typing.List[Transaction]) -> typing.Union[Block, None]:
+        difficulty = self.get_difficulty()
+        new_block = self.find_block(self.last_block.index + 1, self.last_block.hash(), transactions, difficulty, wallet)
+
+        if new_block is not None:
+            self.chain.append(new_block)
+
+        return new_block
+
+    def find_block(self, index: int, previous_hash: str, transactions: typing.List[Transaction], difficulty: int, wallet: Wallet) -> typing.Union[Block, None]:
+        past_timestamp = 0
+
+        while not self.block_mining:
+            current_timestamp = self.get_usable_timestamp()
+            if not current_timestamp == past_timestamp:
+                if self.validate_stake(previous_hash, wallet.public_key.toString(), current_timestamp, wallet.get_account_balance(self.unspent_transaction_outs), difficulty):
+                    return Block(index, previous_hash, difficulty, wallet.get_account_balance(self.unspent_transaction_outs), wallet.public_key.toString(), transactions)
+                past_timestamp = current_timestamp
+
+        return None
+
+    def get_usable_timestamp(self) -> int:
+        return round(time.time() / 1000)
+
+    def create_new_transaction(self, wallet: Wallet, recipient: str, amount: float):
         """
         Creates a new transaction to go into the next mined Block
         <model> Transaction
@@ -58,9 +91,12 @@ class Blockchain:
         :param amount: Transaction Amount
         :return: We return the index of the block that contains the transaction
         """
-        self.unverified_transactions.append(Transaction(sender, recipient, amount))
-
-        return self.last_block.index + 1
+        new_transaction = wallet.create_transaction(recipient, amount, self.unspent_transaction_outs, self.transaction_pool)
+        if new_transaction is not None:
+            self.transaction_pool.append(new_transaction)
+            return self.last_block.index + 1
+        else:
+            return -1
 
     def valid_chain(self, chain):
         """
@@ -107,10 +143,10 @@ class Blockchain:
 
 
     def replace_pool(self, new_pool: typing.List[dict]):
-        self.unverified_transactions = []
+        self.transaction_pool = []
 
         for transaction in new_pool:
-            self.unverified_transactions.append(Transaction.from_dict(transaction))
+            self.transaction_pool.append(Transaction.from_dict(transaction))
 
     def generate_proof(self, last_block):
         """
@@ -136,6 +172,25 @@ class Blockchain:
 
         return proof
 
+    def get_difficulty(self) -> int:
+        if self.last_block.index % DIFFICULTY_ADJUSTMENT_ITNERVAL == 0:
+            return self.get_adjusted_difficulty()
+        else:
+            return self.last_block.difficulty
+
+    def get_adjusted_difficulty(self) -> int:
+        prev_adjusted_block = self.chain[len(self.chain) - DIFFICULTY_ADJUSTMENT_ITNERVAL]
+
+        time_expected = BLOCK_GENERATION_INTERVAL * DIFFICULTY_ADJUSTMENT_ITNERVAL
+        time_taken = self.last_block.timestamp - prev_adjusted_block.timestamp
+
+        if time_taken < time_expected / 2:
+            return prev_adjusted_block.difficulty + 1
+        elif time_taken > time_expected / 2:
+            return prev_adjusted_block.difficulty - 1
+        else:
+            return prev_adjusted_block.difficulty
+
     @staticmethod
     def validate_proof(previous_block_proof, proof, previous_block_hash):
         """
@@ -155,3 +210,12 @@ class Blockchain:
         number = f'{previous_block_proof}{proof}{previous_block_hash}'.encode()
         number_hashed = hashlib.sha256(number).hexdigest()
         return number_hashed[-4:] == "0000"
+
+    @staticmethod 
+    def validate_stake(previous_hash: str, address: str, timestamp: int, balance: float, difficulty: int) -> bool:
+        difficulty = difficulty + 1
+
+        balance_over_diff = 2 ** 256 * balance / difficulty
+        staking_hash = int(hashlib.sha256((previous_hash + address + str(timestamp)).encode()).hexdigest(), 16)
+
+        return balance_over_diff - staking_hash >= 0
