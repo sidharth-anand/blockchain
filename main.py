@@ -12,6 +12,7 @@ from p2p.events import P2PEvents
 
 from blockchain.block import Block
 from blockchain.blockchain import Blockchain
+from blockchain.constants import VALIDATOR_AMOUNT, BURN_URL
 
 from wallet.wallet import Wallet
 
@@ -25,7 +26,11 @@ node_identifier = str(uuid4()).replace('-', '')
 
 p2pNode = p2pNode = P2PNode()
 
+# Instantiate the Wallet
 wallet = Wallet()
+
+# Instantiate the Blockchain
+blockchain = Blockchain()
 
 class ExitFromApp(Exception):
     pass
@@ -46,48 +51,46 @@ def handle_p2p_events(event, data):
             blockchain.replace_pool(data['pool'])
         elif data['event'] == 'block_created':
             blockchain.block_mining = True
-            
+
             new_chain = blockchain.chain
             # new_chain.append(Block(len(new_chain) + 1, data['proof'], new_chain[-1].hash(), blockchain.transaction_pool))
 
             if blockchain.valid_chain(new_chain):
                 blockchain.create_new_block(data['proof'])
-                
 
             blockchain.block_mining = False
+
 
 def shutdown(signal, frame):
     raise ExitFromApp
 
-# Instantiate the Blockchain
-blockchain = Blockchain()
+
+@app.route('/chain', methods=['GET'])
+def full_chain():
+    response = {
+        'chain': blockchain.chain,
+        'length': len(blockchain.chain),
+    }
+    return jsonify(response), 200
 
 
 @app.route('/mint', methods=['GET'])
 def mine():
     # We need to run the consensus algorithm to get the proof for the block that needs to be mined
     new_block = blockchain.create_new_block(wallet)
-
     if new_block is None:
         return jsonify('Another node completed mining before this node'), 200
+    return jsonify('Minting Completed!'), 200
 
-    # New block is added to the chain
-    # block = blockchain.create_new_block(proof)
 
-    # p2pNode.broadcast({
-    #     'event': 'block_created',
-    #     'proof': proof
-    # })
+@app.route('/wallet/balance', methods=['GET'])
+def get_balance():
+    return jsonify(wallet.get_account_balance(blockchain.unspent_transaction_outs)), 200
 
-    # response = {
-    #     'message': "New Block Added",
-    #     'index': block.index,
-    #     'transactions': block.transactions,
-    #     'proof': block.proof_of_work,
-    #     'previous_hash': block.previous_hash,
-    # }
 
-    return jsonify('response'), 200
+@app.route('/wallet/address', methods=['GET'])
+def get_address():
+    return wallet.public_key.toString(), 200
 
 
 @app.route('/transactions/new', methods=['POST'])
@@ -106,29 +109,45 @@ def create_new_transaction():
 
     if transaction is not None:
         blockchain.transaction_pool.append(transaction)
+        return 'Added your transaction to pool', 200
+    else:
+        return 'Could not add your transaction', 401
 
-        # p2pNode.broadcast({
-        #     'event': 'new_transaction',
-        #     'recipient': values['recipient'],
-        #     'amount': values['amount']
-        # })
 
+@app.route('/transactions/validator', methods=['POST'])
+def become_a_validator():
+    transaction = wallet.validator_transaction(BURN_URL, VALIDATOR_AMOUNT, blockchain.unspent_transaction_outs, blockchain.transaction_pool)
+    if transaction is not None:
+        blockchain.transaction_pool.append(transaction)
         return 'Added your transaction to pool', 200
 
     else:
         return 'Could not add your transaction', 401
 
+
+# TODO: Complete the Stake Coins Function
+@app.route('/transactions/stake', methods=['POST'])
+def stake_coins():
+    values = request.get_json()
+
+    if values is None:
+        return None, 401
+
+    required = ['amount']
+    if not all(k in values for k in required):
+        return 'Missing values', 400
+
+    return 'Your Coins has been staked', 200
+
+
 @app.route('/transactions/pool', methods=['GET'])
 def unverified_transactions():
     return jsonify(blockchain.transaction_pool), 200
 
-@app.route('/chain', methods=['GET'])
-def full_chain():
-    response = {
-        'chain': blockchain.chain,
-        'length': len(blockchain.chain),
-    }
-    return jsonify(response), 200
+
+@app.route('/nodes', methods=['GET'])
+def get_nodes():
+    return jsonify(p2pNode.connection_urls), 200
 
 
 @app.route('/nodes/register', methods=['POST'])
@@ -163,10 +182,10 @@ def broadcast_node():
 
     if not values:
         return 'Could not find values', 401
-    
+
     if not values['host'] or not values['port']:
         return 'Specify the node to broadcast', 401
-    
+
     host = values['host']
     port = values['port']
 
@@ -179,7 +198,7 @@ def broadcast_node():
     nodes_list = p2pNode.connection_urls
 
     p2pNode.connect(host, port)
-    
+
     connected_node = p2pNode.get_connection(host, port)
 
     p2pNode.send_to_node(connected_node, {
@@ -193,17 +212,6 @@ def broadcast_node():
 
     return jsonify(nodes_list), 200
 
-@app.route('/nodes', methods=['GET'])
-def get_nodes():
-    return jsonify(p2pNode.connection_urls), 200
-
-@app.route('/wallet/balance', methods=['GET'])
-def get_balance():
-    return jsonify(wallet.get_account_balance(blockchain.unspent_transaction_outs)), 200
-
-@app.route('/wallet/address', methods=['GET'])
-def get_address():
-    return wallet.public_key.toString(), 200
 
 @app.route('/', methods=['GET'])
 def base():
@@ -237,12 +245,12 @@ if __name__ == '__main__':
     try:
         p2pNode.init(host='0.0.0.0', port=socket_port, callback=handle_p2p_events)
         p2pNode.start()
-        
+
         app.run(host='0.0.0.0', port=port, debug=True, use_reloader=False)
 
         while True:
             continue
-    
+
     except ExitFromApp:
         if p2pNode is not None:
             p2pNode.terminate_flag.set()

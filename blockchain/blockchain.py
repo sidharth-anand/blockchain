@@ -21,6 +21,7 @@ class Blockchain:
         self.chain: typing.List[Block] = [Block.genesis()]
 
         unspent_transaction_outs = Transaction.process_transactions(self.chain[0].transactions, [], self.chain[0].index)
+
         if unspent_transaction_outs is not None:
             self.unspent_transaction_outs: typing.List[UnspentTransactionOut] = unspent_transaction_outs
         else:
@@ -44,12 +45,19 @@ class Blockchain:
         """
 
         coinbase_transaction = Transaction.generation_coinbase_transaction(wallet.public_key.toString(), self.last_block.index + 1)
-        new_block = self.create_new_block_raw(wallet, [coinbase_transaction] + self.transaction_pool)
 
+        new_block = self.create_new_block_raw(wallet, [coinbase_transaction] + self.transaction_pool)
         if new_block is not None:
+            # TODO: Update the Transactions Processing
+            for i in range(len(self.chain)):
+                self.unspent_transaction_outs = Transaction.process_transactions(self.chain[i].transactions, self.unspent_transaction_outs, self.chain[i].index)
+
+            if self.unspent_transaction_outs is not None:
+                self.unspent_transaction_outs: typing.List[UnspentTransactionOut] = self.unspent_transaction_outs
+            else:
+                self.unspent_transaction_outs: typing.List[UnspentTransactionOut] = []
             # Unverified Transactions list is reset back after mining
             self.transaction_pool = []
-
             return self.last_block
         else:
             return None
@@ -138,7 +146,7 @@ class Blockchain:
         if self.valid_chain(new_chain):
             self.chain = new_chain
             return True
-        
+
         return False
 
 
@@ -211,7 +219,7 @@ class Blockchain:
         number_hashed = hashlib.sha256(number).hexdigest()
         return number_hashed[-4:] == "0000"
 
-    @staticmethod 
+    @staticmethod
     def validate_stake(previous_hash: str, address: str, timestamp: int, balance: float, difficulty: int) -> bool:
         difficulty = difficulty + 1
 
