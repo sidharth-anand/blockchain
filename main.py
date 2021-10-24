@@ -12,7 +12,7 @@ from p2p.events import P2PEvents
 
 from blockchain.block import Block
 from blockchain.blockchain import Blockchain
-from blockchain.constants import VALIDATOR_AMOUNT, BURN_URL
+from blockchain.constants import VALIDATOR_AMOUNT, CHAIN_ADDRESS
 
 from wallet.wallet import Wallet
 
@@ -76,6 +76,12 @@ def full_chain():
 
 @app.route('/mint', methods=['GET'])
 def mine():
+    if not wallet.can_account_validate(blockchain.all_transactions):
+        return 'You need to be a validator to mint blocks', 200
+    
+    if wallet.get_account_stake(blockchain.all_transactions) == 0:
+        return 'You need to stake some coins in order to mint blocks', 200
+
     # We need to run the consensus algorithm to get the proof for the block that needs to be mined
     new_block = blockchain.create_new_block(wallet)
     if new_block is None:
@@ -87,10 +93,17 @@ def mine():
 def get_balance():
     return jsonify(wallet.get_account_balance(blockchain.unspent_transaction_outs)), 200
 
+@app.route('/wallet/stake', methods=['GET'])
+def get_stake():
+    return jsonify(wallet.get_account_stake(blockchain.all_transactions)), 200
 
 @app.route('/wallet/address', methods=['GET'])
 def get_address():
     return wallet.public_key.toString(), 200
+
+@app.route('/wallet/validator', methods=['GET'])
+def is_validator():
+    return wallet.can_account_validate(blockchain.all_transactions)
 
 
 @app.route('/transactions/new', methods=['POST'])
@@ -116,7 +129,10 @@ def create_new_transaction():
 
 @app.route('/transactions/validator', methods=['POST'])
 def become_a_validator():
-    transaction = wallet.validator_transaction(BURN_URL, VALIDATOR_AMOUNT, blockchain.unspent_transaction_outs, blockchain.transaction_pool)
+    if wallet.can_account_validate(blockchain.all_transactions):
+        return 'you are already a validator', 200
+
+    transaction = wallet.validator_transaction(CHAIN_ADDRESS, VALIDATOR_AMOUNT, blockchain.unspent_transaction_outs, blockchain.transaction_pool)
     if transaction is not None:
         blockchain.transaction_pool.append(transaction)
         return 'Added your transaction to pool', 200
@@ -136,6 +152,14 @@ def stake_coins():
     required = ['amount']
     if not all(k in values for k in required):
         return 'Missing values', 400
+
+    transaction = wallet.create_transaction(CHAIN_ADDRESS, float(values['amount']), blockchain.unspent_transaction_outs, blockchain.transaction_pool)
+
+    if transaction is not None:
+        blockchain.transaction_pool.append(transaction)
+        return 'Added your transaction to pool', 200
+    else:
+        return 'Could not add your transaction', 401
 
     return 'Your Coins has been staked', 200
 

@@ -2,6 +2,8 @@ import hashlib
 import typing
 import time
 
+from functools import reduce
+
 from blockchain.block import Block
 from blockchain.transaction import Transaction, UnspentTransactionOut
 from blockchain.constants import BLOCK_GENERATION_INTERVAL, DIFFICULTY_ADJUSTMENT_ITNERVAL
@@ -48,14 +50,11 @@ class Blockchain:
 
         new_block = self.create_new_block_raw(wallet, [coinbase_transaction] + self.transaction_pool)
         if new_block is not None:
-            # TODO: Update the Transactions Processing
-            for i in range(len(self.chain)):
-                self.unspent_transaction_outs = Transaction.process_transactions(self.chain[i].transactions, self.unspent_transaction_outs, self.chain[i].index)
+            unpspent_transaction_outs = Transaction.process_transactions(new_block.transactions, self.unspent_transaction_outs, new_block.index)
 
-            if self.unspent_transaction_outs is not None:
-                self.unspent_transaction_outs: typing.List[UnspentTransactionOut] = self.unspent_transaction_outs
-            else:
-                self.unspent_transaction_outs: typing.List[UnspentTransactionOut] = []
+            if unpspent_transaction_outs is not None:
+                self.unspent_transaction_outs = unpspent_transaction_outs
+
             # Unverified Transactions list is reset back after mining
             self.transaction_pool = []
             return self.last_block
@@ -77,7 +76,7 @@ class Blockchain:
         while not self.block_mining:
             current_timestamp = self.get_usable_timestamp()
             if not current_timestamp == past_timestamp:
-                if self.validate_stake(previous_hash, wallet.public_key.toString(), current_timestamp, wallet.get_account_balance(self.unspent_transaction_outs), difficulty):
+                if self.validate_stake(previous_hash, wallet.public_key.toString(), current_timestamp, wallet.get_account_stake(self.all_transactions), difficulty):
                     return Block(index, previous_hash, difficulty, wallet.get_account_balance(self.unspent_transaction_outs), wallet.public_key.toString(), transactions)
                 past_timestamp = current_timestamp
 
@@ -227,3 +226,7 @@ class Blockchain:
         staking_hash = int(hashlib.sha256((previous_hash + address + str(timestamp)).encode()).hexdigest(), 16)
 
         return balance_over_diff - staking_hash >= 0
+
+    @property
+    def all_transactions(self) -> typing.List[Transaction]:
+        return reduce(lambda a, b: a + b, [block.transactions for block in self.chain], [])

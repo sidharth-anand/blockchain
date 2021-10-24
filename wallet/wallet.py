@@ -3,7 +3,10 @@ from functools import reduce
 
 from ellipticcurve.ecdsa import Ecdsa
 from ellipticcurve.privateKey import PrivateKey
+from ellipticcurve.signature import Signature
+
 from blockchain.transaction import Transaction, TransactionIn, TransactionOut, TransactionTypes, UnspentTransactionOut
+from blockchain.constants import CHAIN_ADDRESS
 
 class Wallet():
     def __init__(self) -> None:
@@ -14,7 +17,6 @@ class Wallet():
         self.private_key = PrivateKey.fromString(open(filename).readlines()[0])
         self.public_key = self.private_key.publicKey()
 
-    # TODO: Validator Transaction
     def validator_transaction(self, recipient_address: str, amount: float, unspent_transaction_outs: typing.List[UnspentTransactionOut], transaction_pool: typing.List[Transaction]) -> typing.Union[Transaction, None]:
         my_address = self.public_key.toString()
         my_unspent_transactions = self.filter_transaction_pool([u for u in unspent_transaction_outs if u.address == my_address], transaction_pool)
@@ -142,3 +144,21 @@ class Wallet():
 
     def get_account_balance(self, unspent_transaction_outs: typing.List[UnspentTransactionOut]) -> float:
         return reduce(lambda a,b: a + b.amount, [unspent_transaction_out for unspent_transaction_out in unspent_transaction_outs if unspent_transaction_out.address == self.public_key.toString()], 0)
+
+    def can_account_validate(self, transactions: typing.List[Transaction]) -> bool:
+        for transaction in transactions:
+            if transaction.type == TransactionTypes.VALIDATOR and Ecdsa.verify(transaction.id, Signature._fromString(transaction.transaction_ins[0].signature), self.public_key):
+                return True
+        
+        return False
+
+    def get_account_stake(self, transactions: typing.List[Transaction]) -> float:
+        stake_amount = 0
+
+        for transaction in transactions:
+            if transaction.type == TransactionTypes.STAKE and Ecdsa.verify(transaction.id, Signature._fromString(transaction.transaction_ins[0].signature), self.public_key):
+                for transaction_out in transaction.transaction_outs:
+                    if transaction_out.address == CHAIN_ADDRESS:
+                        stake_amount += transaction_out.amount
+        
+        return stake_amount

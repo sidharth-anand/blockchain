@@ -8,7 +8,7 @@ from ellipticcurve.ecdsa import Ecdsa
 from ellipticcurve.signature import Signature
 from ellipticcurve.publicKey import PublicKey
 
-from blockchain.constants import COINBASE_AMOUNT, OWNER_INIT_AMOUNT
+from blockchain.constants import COINBASE_AMOUNT, GENESIS_BLOCK_INDEX, OWNER_INIT_AMOUNT
 
 class TransactionTypes(Enum):
     COINBASE = 'coinbase'
@@ -63,7 +63,7 @@ class Transaction(dict):
             self.transaction_outs = transaction_outs
             self.type = transaction_type
 
-            dict.__init__(self, id=self.id, transaction_ins=self.transaction_ins, transaction_outs=self.transaction_outs)
+            dict.__init__(self, id=self.id, transaction_ins=self.transaction_ins, transaction_outs=self.transaction_outs, type=str(self.type))
 
 
     @property
@@ -122,7 +122,7 @@ class Transaction(dict):
 
     @staticmethod
     def process_transactions(transactions, unspent_transaction_outs: typing.List[UnspentTransactionOut], block_index: int) -> typing.Union[typing.List[UnspentTransactionOut], None]:
-        if not Transaction.validate_transactions_in_block(transactions, unspent_transaction_outs, block_index):
+        if not block_index == GENESIS_BLOCK_INDEX and not Transaction.validate_transactions_in_block(transactions, unspent_transaction_outs, block_index):
             return None
 
         return Transaction.update_unspent_transaction_outs(transactions, unspent_transaction_outs)
