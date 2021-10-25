@@ -128,6 +128,7 @@ class Wallet():
 
         return [unspent_transaction_out for unspent_transaction_out in unspent_transasction_outs if unspent_transaction_out not in removable]
 
+
     def transaction_outs_for_amount(self, unspent_transaction_outs: typing.List[UnspentTransactionOut], amount: float) -> typing.Union[typing.Tuple[typing.List[UnspentTransactionOut], float], None]:
         current_amount = 0
         included_unspent_transaction_outs: typing.List[UnspentTransactionOut] = []
@@ -140,6 +141,7 @@ class Wallet():
                 return (included_unspent_transaction_outs, current_amount - amount)
         return None
 
+
     def create_transaction_outs(self, recipient_address: str, amount: float, left_over_amount: float) -> typing.List[TransactionOut]:
         transaction_out = TransactionOut(recipient_address, amount)
 
@@ -148,6 +150,7 @@ class Wallet():
         else:
             left_over_transaction = TransactionOut(self.public_key.toString(), left_over_amount)
             return [transaction_out, left_over_transaction]
+
 
     def get_transaction_signatures(self, transaction: Transaction, unspent_transaction_outs: typing.List[UnspentTransactionOut]) -> typing.Union[typing.List[str], None]:
         signatures: typing.List[str] = []

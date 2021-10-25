@@ -112,6 +112,12 @@ class Transaction(dict):
         return Ecdsa.verify(self.id, signature, key)
 
 
+    """
+    Generate Coinbase Transaction
+     - Coinbase is the first transaction for the Block
+     - Sender is ''
+     - Amount is COINBASE_AMOUNT
+    """
     @staticmethod
     def generation_coinbase_transaction(address: str, block_index: int):
         transaction_in = TransactionIn('', block_index, '')
@@ -136,6 +142,7 @@ class Transaction(dict):
         return [u for u in unspent_transaction_outs if not UnspentTransactionOut.find_unspent_transaction_out(u.transaction_out_id, u.transaction_out_index, consumed_transaction_outs)] + new_unspent_transaction_outs
 
 
+    # Valiate Coinbase Transaction - verifies is TransactionType == COINBASE
     @staticmethod
     def validate_coinbase_transaction(transaction, block_index: int) -> bool:
         return transaction.type == TransactionTypes.COINBASE and len(transaction.transaction_ins) == 1 and len(transaction.transaction_outs) == 1 and transaction.transaction_ins[0].transaction_out_index == block_index and (transaction.transaction_outs[0].amount == COINBASE_AMOUNT or transaction.transaction_outs[0].amount == OWNER_INIT_AMOUNT)
