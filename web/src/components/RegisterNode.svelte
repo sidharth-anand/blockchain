@@ -32,10 +32,15 @@
 			linkedNodes.update(() => {
 				return [...data.total_nodes];
 			});
+			showAlert.update(() => true);
+			alertType.update(() => 'success');
+			alertMessage.update(() => data.message || 'Success');
+			console.log(data);
 		} catch (err) {
+			console.log({ ...err });
 			showAlert.update(() => true);
 			alertType.update(() => 'danger');
-			alertMessage.update(() => 'Could not register node');
+			alertMessage.update(() => err.message || 'Could not register node');
 		}
 		inputField = '';
 		loading = false;

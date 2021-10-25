@@ -15,6 +15,8 @@
 
 			const data = await res.json();
 
+			console.log(data);
+
 			chains.update(() => {
 				return data.chain;
 			});
@@ -24,7 +26,7 @@
 			$chains.forEach((e) => {
 				if (e.transactions.length) {
 					e.transactions.forEach((el) => {
-						t.push({ blockIndex: e.index, timestamp: e.timestamp, ...el });
+						t.push(el);
 					});
 				}
 			});
@@ -44,24 +46,25 @@
 		<table class="table crypto-table">
 			<thead>
 				<tr>
-					<th>Block Index</th>
-					<th scope="col">Sender</th>
+					<th>#</th>
+					<th scope="col">Type</th>
+					<th scope="col">Amount</th>
 					<th scope="col">Recipient</th>
-					<th scope="col">Timestamp</th>
-					<th scope="col">Amount ($)</th>
 				</tr>
 			</thead>
 			<tbody>
 				{#each $transactions as transaction, i (i)}
 					<tr>
-						<th scope="row">{transaction.blockIndex}</th>
-
+						<th scope="row">{i + 1}</th>
 						<td>
-							{transaction.sender}
+							{transaction.type}
 						</td>
-						<td>{transaction.recipient}</td>
-						<td>{transaction.timestamp}</td>
-						<td class="text-success">{transaction.amount}</td>
+						<td class="text-success">
+							{transaction?.transaction_outs[0].amount}
+						</td>
+						<td>
+							{transaction.transaction_outs[0].address}
+						</td>
 					</tr>
 				{/each}
 			</tbody>

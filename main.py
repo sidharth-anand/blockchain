@@ -144,6 +144,23 @@ def is_validator():
     return jsonify(wallet.can_account_validate(blockchain.all_transactions)), 200
 
 
+@app.route('/wallet', methods=["GET"])
+def wallet_details():
+    balance = wallet.get_account_balance(blockchain.unspent_transaction_outs)
+    stake = wallet.get_account_stake(blockchain.all_transactions)
+    address = wallet.public_key.toString(), 200
+    is_validator = wallet.can_account_validate(blockchain.all_transactions)
+
+    data = {
+        'balance': balance,
+        'stake': stake,
+        'address': address,
+        'is_validator': is_validator
+    }
+
+    return jsonify(data), 200
+
+
 """
     Create a new transaction
     - This is a POST Endpoint to create a new transaction between a sender and recipient
@@ -177,9 +194,9 @@ def create_new_transaction():
             'transaction': transaction
         })
 
-        return 'Added your transaction to pool', 200
+        return jsonify({'message': 'Added your transaction to pool'}), 200
     else:
-        return 'Could not add your transaction', 401
+        return jsonify({'message': 'Could not add your transaction'}), 401
 
 
 """

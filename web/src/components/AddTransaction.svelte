@@ -5,14 +5,14 @@
 
 	let loading = false;
 
-	let sender = '';
+	// let sender = '';
 	let recipient = '';
 	let amount = '';
 
 	const addTransaction = async () => {
 		loading = true;
 
-		if (!sender || !recipient || !amount) {
+		if (!recipient || !amount) {
 			showAlert.update(() => true);
 			alertType.update(() => 'danger');
 			alertMessage.update(() => 'Please enter all fields');
@@ -26,21 +26,29 @@
 				headers: {
 					'Content-Type': 'application/json',
 				},
-				body: JSON.stringify({ sender, recipient, amount }),
+				body: JSON.stringify({ recipient, amount }),
 			});
 
-			await res.json();
+			const data = await res.json();
 
-			unverifiedTransactions.update((data) => {
-				return [...data, { sender, recipient, amount }];
-			});
+			console.log(res);
+			if (`${res.status}`.startsWith('4')) {
+				showAlert.update(() => true);
+				alertType.update(() => 'danger');
+				alertMessage.update(
+					() => data.message || 'Unable to make a transaction'
+				);
+			} else {
+				// unverifiedTransactions.update((data) => {
+				// 	return [...data, { recipient, amount }];
+				// });
+			}
 		} catch (err) {
 			showAlert.update(() => true);
 			alertType.update(() => 'danger');
 			alertMessage.update(() => 'Unable to make a transaction');
 		}
 
-		sender = '';
 		recipient = '';
 		amount = '';
 		loading = false;
@@ -54,16 +62,17 @@
 			<h5 class="card-title mb-0 ms-3">Add new transaction</h5>
 		</div>
 		<form on:submit|preventDefault={addTransaction}>
-			<div class="mb-3">
-				<label for="sender" class="form-label">Sender</label>
+			<div class="mb-4">
+				&nbsp;
+				<!-- <label for="sender" class="form-label">Sender</label>
 				<input
 					bind:value={sender}
 					type="text"
 					class="form-control"
 					id="sender"
-				/>
+				/> -->
 			</div>
-			<div class="mb-3">
+			<div class="mb-4">
 				<label for="recipient" class="form-label">Recipient</label>
 				<input
 					bind:value={recipient}
@@ -72,7 +81,7 @@
 					id="recipient"
 				/>
 			</div>
-			<div class="mb-3">
+			<div class="mb-5">
 				<label for="amount" class="form-label">Amount</label>
 				<input
 					bind:value={amount}

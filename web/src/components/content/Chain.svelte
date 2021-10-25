@@ -32,7 +32,8 @@
 			<tr>
 				<th scope="col">Block Index</th>
 				<th scope="col">Previous Hash</th>
-				<th scope="col">Proof of Work</th>
+				<th scope="col">Difficulty</th>
+				<th scope="col">Minter Balance</th>
 				<th scope="col">Timestamps</th>
 				<th scope="col"># of Transactions</th>
 			</tr>
@@ -44,7 +45,8 @@
 					<td>
 						{chain.previous_hash}
 					</td>
-					<td class="text-primary">{chain.proof}</td>
+					<td class="text-primary">{chain.difficulty}</td>
+					<td class="text-primary">{chain.minter_balance}</td>
 					<td>{chain.timestamp}</td>
 					<td
 						><button type="button" class="btn btn-link"
