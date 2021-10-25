@@ -365,6 +365,11 @@ def home(path):
     return send_from_directory('web/public', path)
 
 
+@app.errorhandler(404)
+def not_found(e):
+    return send_from_directory('web/public', 'index.html')
+
+
 if __name__ == '__main__':
     from argparse import ArgumentParser
 

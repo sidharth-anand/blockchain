@@ -8,6 +8,7 @@ import typescript from '@rollup/plugin-typescript';
 import css from 'rollup-plugin-css-only';
 import replace from '@rollup/plugin-replace';
 import nodePolyfills from 'rollup-plugin-polyfill-node';
+import routerServe from 'rollup-plugin-serve';
 
 const production = !process.env.ROLLUP_WATCH;
 
@@ -94,6 +95,14 @@ export default {
 		// If we're building for production (npm run build
 		// instead of npm run dev), minify
 		production && terser(),
+
+		!production &&
+			routerServe({
+				contentBase: 'dist',
+				port: 5000,
+				historyApiFallback: true,
+				historyApiFallback: 'index.html',
+			}),
 	],
 	watch: {
 		clearScreen: false,
