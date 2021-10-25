@@ -6,17 +6,6 @@ export type Tab = {
 	component: any;
 };
 
-export type UnverifiedTransaction = {
-	sender: string;
-	recipient: string;
-	amount: number;
-};
-
-export type VerifiedTransaction = UnverifiedTransaction & {
-	timestamp: string | number | Date;
-	blockIndex: number;
-};
-
 export type Chain = {
 	index: number;
 	difficulty: number;

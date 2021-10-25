@@ -8,9 +8,10 @@
 	import VerifiedTransactions from '../components/content/VerifiedTransactions.svelte';
 	import UnVerifiedTransactions from '../components/content/UnVerifiedTransactions.svelte';
 	import LinkedNodes from '../components/content/LinkedNodes.svelte';
+	import { activeTab, tabs } from '../store/tabs';
 	import { onMount } from 'svelte';
 
-	const tabs: Tab[] = [
+	const myTabs: Tab[] = [
 		{
 			color: 'text-primary',
 			icon: 'fas fa-link',
@@ -41,25 +42,30 @@
 		},
 	];
 
-	let activeTab = 'chain';
-	const setTab: (n: string) => void = (tabName) => {
-		activeTab = tabName;
-		localStorage.setItem('tab', activeTab);
-	};
+	let myActiveTab = 'chain';
 
 	onMount(() => {
 		let tab = localStorage.getItem('tab');
+
 		if (!tab) {
-			localStorage.setItem('tab', activeTab);
+			localStorage.setItem('tab', myActiveTab);
+			activeTab.update(() => myActiveTab);
 		} else {
-			activeTab = tab;
+			myActiveTab = tab;
+			activeTab.update(() => tab);
 		}
+
+		tabs.update(() => myTabs);
 	});
+
+	$: {
+		localStorage.setItem('tab', $activeTab);
+	}
 </script>
 
 <div class="row">
 	<div class="col-lg-8">
-		<Navigation {tabs} {setTab} {activeTab} />
+		<Navigation tabs={myTabs} />
 	</div>
 	<div class="col-lg-4">
 		<RegisterNode />
@@ -67,7 +73,7 @@
 </div>
 <div class="row">
 	<div class="col-lg-8 col-md-12">
-		<Content {tabs} {activeTab} />
+		<Content />
 	</div>
 	<div class="col-lg-4 col-md-12">
 		<AddTransaction />

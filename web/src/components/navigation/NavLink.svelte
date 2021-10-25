@@ -1,12 +1,14 @@
 <script lang="ts">
 	import NodeIcon from '../../icons/NodeIcon.svelte';
 	import type { Tab } from '../../types';
+	import { activeTab } from './../../store/tabs';
 
 	export let tab: Tab;
-	export let handleTabSwitch;
-	export let activeTab;
+	const handleTabSwitch = () => {
+		activeTab.update(() => tab.text);
+	};
 
-	$: isActive = activeTab === tab.text;
+	$: isActive = $activeTab === tab.text;
 	$: btnClass = isActive
 		? `${tab.activeStyle} nav-btn-border-transparent`
 		: tab.color;
@@ -16,7 +18,7 @@
 <div class="actions-widget-item">
 	<button
 		type="button"
-		on:click={() => handleTabSwitch(tab.text)}
+		on:click={() => handleTabSwitch()}
 		class="btn btn-circle {btnClass}"
 	>
 		{#if tab.icon.startsWith('fa')}
