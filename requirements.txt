@@ -2,7 +2,4 @@ flask
 uuid
 requests
 flask-cors
-p2p
-typing
-functoolss
 starkbank-ecdsa

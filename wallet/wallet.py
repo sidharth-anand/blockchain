@@ -17,7 +17,11 @@ class Wallet():
         self.private_key = PrivateKey.fromString(open(filename).readlines()[0])
         self.public_key = self.private_key.publicKey()
 
-    def validator_transaction(self, recipient_address: str, amount: float, unspent_transaction_outs: typing.List[UnspentTransactionOut], transaction_pool: typing.List[Transaction]) -> typing.Union[Transaction, None]:
+    def set_private_key(self, private_key: str) -> None:
+        self.private_key = PrivateKey.fromString(private_key)
+        self.public_key - self.private_key.publicKey()
+
+    def create_transaction(self, recipient_address: str, amount: float, unspent_transaction_outs: typing.List[UnspentTransactionOut], transaction_pool: typing.List[Transaction], type: TransactionTypes = TransactionTypes.TRANSFER) -> typing.Union[Transaction, None]:
         my_address = self.public_key.toString()
         my_unspent_transactions = self.filter_transaction_pool([u for u in unspent_transaction_outs if u.address == my_address], transaction_pool)
 
@@ -30,32 +34,7 @@ class Wallet():
         unsigned_transaction_ins = [TransactionIn(unspent_transaction_out.transaction_out_id, unspent_transaction_out.transaction_out_index, '') for unspent_transaction_out in included_unspent_transaction_outs]
         transaction_outs = self.create_transaction_outs(recipient_address, amount, left_over_amount)
 
-        transaction = Transaction(unsigned_transaction_ins, transaction_outs, TransactionTypes.VALIDATOR)
-
-        transaction_signatures = self.get_transaction_signatures(transaction, unspent_transaction_outs)
-
-        if transaction_signatures is None:
-            return None
-
-        for i, transaction_in in enumerate(transaction.transaction_ins):
-            transaction.transaction_ins[i] = TransactionIn(transaction_in.transaction_out_id, transaction_in.transaction_out_index, transaction_signatures[i])
-
-        return transaction
-
-    def create_transaction(self, recipient_address: str, amount: float, unspent_transaction_outs: typing.List[UnspentTransactionOut], transaction_pool: typing.List[Transaction]) -> typing.Union[Transaction, None]:
-        my_address = self.public_key.toString()
-        my_unspent_transactions = self.filter_transaction_pool([u for u in unspent_transaction_outs if u.address == my_address], transaction_pool)
-
-        ret = self.transaction_outs_for_amount(my_unspent_transactions, amount)
-        if ret is not None:
-            (included_unspent_transaction_outs, left_over_amount) = ret
-        else:
-            return None
-
-        unsigned_transaction_ins = [TransactionIn(unspent_transaction_out.transaction_out_id, unspent_transaction_out.transaction_out_index, '') for unspent_transaction_out in included_unspent_transaction_outs]
-        transaction_outs = self.create_transaction_outs(recipient_address, amount, left_over_amount)
-
-        transaction = Transaction(unsigned_transaction_ins, transaction_outs, TransactionTypes.TRANSFER)
+        transaction = Transaction(unsigned_transaction_ins, transaction_outs, type)
 
         transaction_signatures = self.get_transaction_signatures(transaction, unspent_transaction_outs)
 
@@ -134,6 +113,9 @@ class Wallet():
             transaction_in = transaction.transaction_ins[i]
 
             referenced_unspent_transaction_out = UnspentTransactionOut.find_unspent_transaction_out(transaction_in.transaction_out_id, transaction_in.transaction_out_index, unspent_transaction_outs)
+
+            if referenced_unspent_transaction_out is None:
+                return None
 
             if self.private_key.publicKey().toString() != referenced_unspent_transaction_out.address:
                 return None

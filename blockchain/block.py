@@ -21,7 +21,7 @@ class Block(dict):
 
         self.transactions = transactions
 
-        dict.__init__(self, index=self.index, timestamp=self.timestamp, previous_hash=self.previous_hash, difficulty=self.difficulty, transactions=self.transactions)
+        dict.__init__(self, index=self.index, timestamp=self.timestamp, previous_hash=self.previous_hash, difficulty=self.difficulty, minter_balance=self.minter_balance, minter_address=self.minter_address, transactions=self.transactions)
 
     def hash(self):
         return hashlib.sha256(json.dumps(self, sort_keys=True).encode()).hexdigest()
@@ -42,8 +42,10 @@ class Block(dict):
     def from_dict(block_data: dict):
         block = Block(block_data['index'], block_data['previous_hash'], block_data['difficulty'], block_data['minter_balance'], block_data['minter_address'])
         block.timestamp = block_data['timestamp']
+        block.transactions = []
 
-        for transaction in block_data['transactions']:
-            block.transactions.append(Transaction.from_dict(transaction))
+        for transaction_data in block_data['transactions']:
+            block.transactions = block.transactions + [Transaction.from_dict(transaction_data)]
+            block['transactions'] = block.transactions
         
         return block

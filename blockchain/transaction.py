@@ -1,3 +1,4 @@
+from os import error
 import typing
 import hashlib
 
@@ -16,6 +17,19 @@ class TransactionTypes(Enum):
     VALIDATOR = 'validator'
     TRANSFER = 'transfers'
 
+    @staticmethod
+    def from_string(type: str):
+        if type == 'coinbase':
+            return TransactionTypes.COINBASE
+        elif type == 'stake':
+            return TransactionTypes.STAKE
+        elif type == 'validator':
+            return TransactionTypes.VALIDATOR
+        elif type == 'transfers':
+            return TransactionTypes.TRANSFER
+        else:
+            return TransactionTypes.TRANSFER
+
 
 class UnspentTransactionOut(dict):
     def __init__(self, transaction_out_id: str, transaction_out_index: int, address: str, amount: float) -> None:
@@ -28,7 +42,12 @@ class UnspentTransactionOut(dict):
 
     @staticmethod
     def find_unspent_transaction_out(transaction_id: str, index: int, unspent_transaction_outs):
-        return [u for u in unspent_transaction_outs if u.transaction_out_id == transaction_id and u.transaction_out_index == index][0]
+        results =  [u for u in unspent_transaction_outs if u.transaction_out_id == transaction_id and u.transaction_out_index == index]
+
+        if len(results) > 0:
+            return results[0]
+        else:
+            return None
 
 
 class TransactionIn(dict):
@@ -40,13 +59,22 @@ class TransactionIn(dict):
         dict.__init__(self, transaction_out_id=self.transaction_out_id, transaction_out_index=self.transaction_out_index, signature=self.signature)
 
     def get_amount(self, unspent_transaction_outs: typing.List[UnspentTransactionOut]) -> float:
-        return UnspentTransactionOut.find_unspent_transaction_out(self.transaction_out_id, self.transaction_out_index, unspent_transaction_outs).amount
+        unspent_transaction_out = UnspentTransactionOut.find_unspent_transaction_out(self.transaction_out_id, self.transaction_out_index, unspent_transaction_outs)
+
+        if unspent_transaction_out is None:
+            return 0
+
+        return unspent_transaction_out.amount
 
     def __eq__(self, other):
         return self.transaction_out_id + str(self.transaction_out_index) == other.transaction_out_id + str(other.transaction_out_index)
 
     def __hash__(self):
         return hash(self.transaction_out_id + str(self.transaction_out_index) + self.signature)
+
+    @staticmethod
+    def from_dict(transaction_in_data: dict):
+        return TransactionIn(transaction_in_data['transaction_out_id'], transaction_in_data['transaction_out_index'], transaction_in_data['signature'])
 
 
 class TransactionOut(dict):
@@ -56,6 +84,10 @@ class TransactionOut(dict):
 
         dict.__init__(self, address=self.address, amount=self.amount)
 
+    @staticmethod
+    def from_dict(transaction_out_data: dict):
+        return TransactionOut(transaction_out_data['address'], transaction_out_data['amount'])
+
 
 class Transaction(dict):
     def __init__(self, transaction_ins: typing.List[TransactionIn], transaction_outs: typing.List[TransactionOut], transaction_type: TransactionTypes = TransactionTypes.TRANSFER) -> None:
@@ -63,7 +95,7 @@ class Transaction(dict):
             self.transaction_outs = transaction_outs
             self.type = transaction_type
 
-            dict.__init__(self, id=self.id, transaction_ins=self.transaction_ins, transaction_outs=self.transaction_outs, type=str(self.type))
+            dict.__init__(self, id=self.id, transaction_ins=self.transaction_ins, transaction_outs=self.transaction_outs, type=str(self.type).split('.')[1].lower())
 
 
     @property
@@ -131,9 +163,9 @@ class Transaction(dict):
     @staticmethod
     def update_unspent_transaction_outs(transactions, unspent_transaction_outs: typing.List[UnspentTransactionOut]) -> typing.List[UnspentTransactionOut]:
         new_unspent_transaction_outs = reduce(lambda a,b: a + b, map(lambda t: [UnspentTransactionOut(t.id, i, o.address, o.amount) for i, o in enumerate(t.transaction_outs)], transactions), [])
-        consumed_transaction_outs = map(lambda i: UnspentTransactionOut(i.transaction_out_id, i.transaction_out_index, '', 0), reduce(lambda a,b: a + b, [t.transaction_ins for t in transactions], []))
+        consumed_transaction_outs = list(map(lambda i: UnspentTransactionOut(i.transaction_out_id, i.transaction_out_index, '', 0), reduce(lambda a,b: a + b, [t.transaction_ins for t in transactions], [])))
 
-        return [u for u in unspent_transaction_outs if not UnspentTransactionOut.find_unspent_transaction_out(u.transaction_out_id, u.transaction_out_index, consumed_transaction_outs)] + new_unspent_transaction_outs
+        return [u for u in unspent_transaction_outs if UnspentTransactionOut.find_unspent_transaction_out(u.transaction_out_id, u.transaction_out_index, consumed_transaction_outs) is None] + new_unspent_transaction_outs
 
 
     @staticmethod
@@ -141,7 +173,14 @@ class Transaction(dict):
         return transaction.type == TransactionTypes.COINBASE and len(transaction.transaction_ins) == 1 and len(transaction.transaction_outs) == 1 and transaction.transaction_ins[0].transaction_out_index == block_index and (transaction.transaction_outs[0].amount == COINBASE_AMOUNT or transaction.transaction_outs[0].amount == OWNER_INIT_AMOUNT)
 
 
-    #TODO: Update this shit
     @staticmethod
     def from_dict(transaction_data: dict):
-        return Transaction(transaction_data['recipient'], transaction_data['amount'])
+        transaction_ins = []
+        for transaction_in_data in transaction_data['transaction_ins']:
+            transaction_ins.append(TransactionIn.from_dict(transaction_in_data))
+        
+        transaction_outs = []
+        for transaction_out_data in transaction_data['transaction_outs']:
+            transaction_outs.append(TransactionOut.from_dict(transaction_out_data))
+
+        return Transaction(transaction_ins, transaction_outs, TransactionTypes.from_string(transaction_data['type']))

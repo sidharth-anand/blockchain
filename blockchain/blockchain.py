@@ -1,6 +1,7 @@
 import hashlib
 import typing
 import time
+import json
 
 from functools import reduce
 
@@ -105,47 +106,49 @@ class Blockchain:
         else:
             return -1
 
-    def valid_chain(self, chain):
+    @staticmethod
+    def valid_chain(chain: typing.List[Block]) -> typing.Union[typing.List[UnspentTransactionOut], None]:
         """
         Determine if a given blockchain as input is valid
         :param chain: given blockchain
         :return: True if valid, False if not
         """
 
-        last_block = chain[0]
-        current_index = 1
+        unspent_transaction_outs = None
 
-        while current_index < len(chain):
-            block = chain[current_index]
+        for block in chain:            
+            unspent_transaction_outs = Transaction.process_transactions(block.transactions,  unspent_transaction_outs if unspent_transaction_outs is not None else [], block.index)
 
-            # Check that the hash of the block is correct
-            last_block_hash = last_block.hash()
-            if block.previous_hash != last_block_hash:
-                return False
+            if unspent_transaction_outs is None:
+                return None
 
-            # Check that the Proof is correct based on our Consensus Algorithm
-            if not self.validate_proof(last_block.proof_of_work, block.proof_of_work, last_block_hash):
-                return False
+        return unspent_transaction_outs
 
-            last_block = block
-            current_index += 1
-
-        return True
+    @staticmethod
+    def get_accumulated_difficulty(chain: typing.List[Block]) -> int:
+        return reduce(lambda a,b: a + 2 ** b.difficulty, chain, 0)
 
     @property
     def last_block(self) -> Block:
         return self.chain[-1]
 
-    def replace_chain(self, chain_data: typing.List[dict]):
+    def replace_chain(self, chain_data: typing.List[dict]) -> bool:
         new_chain: typing.List[Block] = []
 
-        for block in chain_data:
-            new_chain.append(Block.from_dict(block))
+        for block_data in chain_data:
+            new_chain.append(Block.from_dict(block_data))
 
-        if self.valid_chain(new_chain):
+        unspent_transaction_outs = Blockchain.valid_chain(new_chain)
+
+        if unspent_transaction_outs is not None and Blockchain.get_accumulated_difficulty(new_chain) >= Blockchain.get_accumulated_difficulty(self.chain):
             self.chain = new_chain
-            return True
 
+            self.chain[0].timestamp = new_chain[0].timestamp
+            self.chain[0]['timestamp'] = self.chain[0].timestamp
+
+            self.unspent_transaction_outs = unspent_transaction_outs
+            return True
+        
         return False
 
 
