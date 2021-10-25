@@ -48,14 +48,286 @@ After running the main.py
 
 Launch http://localhost:4000/ in your browser to see the Web App running
 
-There are five options on the Web App at first glance.
+There is a Wallet Button in the Navbar, which shows coins that you have in your wallet
+It also shows your wallet address. 
+
+There options on the Web App at first glance.
 1. Chain: List of Blocks with their properties are listed here
 2. Verified Transactions: List of all verified transactions are listed here
 3. Unverified Transactions: Transactions that are not verified are listed here
 4. Linked Nodes: All the registered nodes of the blockchain, which can be registered from the registered node block on the website, are listed here
 5. Resolve Conflicts: Resolve Conflicts by clicking here
+6. Wallet: Shows coins that you have in your wallet account. This also shows your wallet address. When people want to transfer coins you will be needing to provide the address present in your wallet.
+7. Add a new transaction: The Recipient's wallet address, and Amount of the transaction has to be mentioned, and this transaction goes into the Unverified Transactions list. 
+8. Mine: You can mine on the Unverified Transactions page to view the transactions on the Verified Transactions Page
 
-There is a place for Add a new transaction, where you have to add the Sender, Recipient, and Amount of the transaction, and this transaction goes into the Unverified Transactions list. You can mine on the Unverified Transactions page to view the transactions on the Verified Transactions Page
+
+### API Documentation
+#### Wallet
+##### [GET] Wallet
+```curl
+http://localhost:4000/wallet
+```
+Sample response
+```json
+{
+    "address": [
+        "db8439eb600af85672a9c2f5d7370fe2798c19ef8fba22ea3ed02567b99cb2d2e708bcc258e7ea7741b44430a7199a8cb9474444be6b458b3bafbb3baa3e31f5",
+        200
+    ],
+    "balance": 0,
+    "is_validator": false,
+    "stake": 0
+}
+```
+
+##### [GET] Wallet Address
+```curl
+http://localhost:4000/wallet/address
+```
+Sample response
+```curl
+db8439eb600af85672a9c2f5d7370fe2798c19ef8fba22ea3ed02567b99cb2d2e708bcc258e7ea7741b44430a7199a8cb9474444be6b458b3bafbb3baa3e31f5
+```
+
+##### [GET] Wallet Balance
+```curl
+http://localhost:4000/wallet/balance
+```
+Sample response
+```curl
+25.0
+```
+
+##### [GET] Wallet Stake
+```curl
+http://localhost:4000/wallet/stake
+```
+Sample response
+```curl
+5
+```
+
+##### [GET] Wallet Check if Validator
+```curl
+http://localhost:4000/wallet/validator
+```
+Sample response
+```curl
+true
+```
+
+#### Transactions
+##### [POST] Become a Validator - Transaction
+```curl
+http://localhost:4000/transactions/validator
+```
+Sample response
+```json
+you are already a validator
+```
+
+##### [POST] Create a new transaction
+```curl
+http://localhost:4000/transactions/new
+```
+Sample Body
+```json
+{
+    "recipient": "d9eb850f0bf8294113e9d121239be418934611c3ff36aac4d1ed3055af46993b34040c002101f8c552b91d2ea91e60a8187f82ec012c640e2d01c3eec1d5e489",
+    "amount":"20"
+}
+```
+Sample response
+```json
+{
+    "message": "Added your transaction to pool"
+}
+```
+
+##### [POST] Stake Coins
+```curl
+http://localhost:4000/transactions/stake
+```
+Sample Body
+```json
+{
+    "amount":"2"
+}
+```
+Sample response
+```curl
+'Added your transaction to pool'
+```
+
+##### [GET] Transaction Pool
+```curl
+http://localhost:4000/transactions/pool
+```
+Sample Response
+```json
+[
+    {
+        "id": "21626cfbeb1a4d8eabfbfd4f4bac585c7a555e92baceb862d2bcd16d55b7142c",
+        "transaction_ins": [
+            {
+                "signature": "30440220499e695ae36d906c36f4265ccdb8af34bb34e8b5b096e5a1dc256d718a9a43d402200cdb98b77ffd6ee8ff060fe9caedcfda0e3f679d84ab1f45a195d65ac381858b",
+                "transaction_out_id": "a85c5e0f292e499ca416c562cf749162df9c99aa5471adba39057f2b8911add2",
+                "transaction_out_index": 0
+            },
+            {
+                "signature": "304402203ad42f3b468180e34eca19acb857358d6a5ad5e3c4b466e52085d735784db64302207cef90e943cec5de4354c64fb93f2c4a1b88ea21c6fd4d6bbcd34893a3d9c550",
+                "transaction_out_id": "9ccf4ed8bc7a8a5a35698f809af11693c139b908b65d6325e9e15733f9b2b592",
+                "transaction_out_index": 1
+            }
+        ],
+        "transaction_outs": [
+            {
+                "address": "d9eb850f0bf8294113e9d121239be418934611c3ff36aac4d1ed3055af46993b34040c002101f8c552b91d2ea91e60a8187f82ec012c640e2d01c3eec1d5e489",
+                "amount": 20.0
+            },
+            {
+                "address": "fc15e6f072f6421cdb903da96936c2b0528f752bceb3a7f8b74260149a1b293d647e48c37925f69b0105d28a82e00f3af2bd3e7c5974a43db39887287a585eca",
+                "amount": 5.0
+            }
+        ],
+        "type": "transfer"
+    }
+]
+```
+
+##### [GET] Mint Blocks
+```curl
+http://localhost:4000/mint
+```
+Sample response
+```curl
+'Minting Completed!'
+```
+
+##### [GET] Print the chain
+```curl
+http://localhost:4000/chain
+```
+Sample response
+```json
+{
+    "chain": [
+        {
+            "difficulty": 0,
+            "index": 1,
+            "minter_address": "fc15e6f072f6421cdb903da96936c2b0528f752bceb3a7f8b74260149a1b293d647e48c37925f69b0105d28a82e00f3af2bd3e7c5974a43db39887287a585eca",
+            "minter_balance": 0,
+            "previous_hash": "",
+            "timestamp": 1635166871.445565,
+            "transactions": [
+                {
+                    "id": "08efdf57fa672ca56a4bbf6607681d2a27019d8741e4673adf4dd55ecc354d4d",
+                    "transaction_ins": [
+                        {
+                            "signature": "3045022100f192164efcdead014d87c2c15bf67ec55d33a52ca886006dcbe5f245319a32ca02202bc929e13dee95fdefa530cf1cc56483ba0566d43ac1327a5469bc48af01e838",
+                            "transaction_out_id": "",
+                            "transaction_out_index": 1
+                        }
+                    ],
+                    "transaction_outs": [
+                        {
+                            "address": "fc15e6f072f6421cdb903da96936c2b0528f752bceb3a7f8b74260149a1b293d647e48c37925f69b0105d28a82e00f3af2bd3e7c5974a43db39887287a585eca",
+                            "amount": 50
+                        }
+                    ],
+                    "type": "coinbase"
+                },
+                {
+                    "id": "41fd558a5d670419438600968a7f1480236ae4800d784f17d62e27a37abc78a6",
+                    "transaction_ins": [
+                        {
+                            "signature": "3045022073c3937557b0015aeebe9cc154b2d2f8c8dc39d5fb33a0f8b7ad3f883c98fb5a022100aa683337150e5711a02f3fd665dfeec50181f74e931831415bcfd338d677c33c",
+                            "transaction_out_id": "",
+                            "transaction_out_index": 1
+                        }
+                    ],
+                    "transaction_outs": [
+                        {
+                            "address": "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+                            "amount": 10
+                        }
+                    ],
+                    "type": "validator"
+                },
+                {
+                    "id": "3f999f91b84369fee4c4270da85cad47c51bc06fe2ed60e594f83b0fc68c56ed",
+                    "transaction_ins": [
+                        {
+                            "signature": "3045022100aaa707597e2c9fd5818586fc2b47bd8e330326c61fdfe7a243c3f033bb64814c022037e36d6335a71e8469b3892dd6fc0e8688eb266d779d6749dfb7aa9203b121b2",
+                            "transaction_out_id": "",
+                            "transaction_out_index": 1
+                        }
+                    ],
+                    "transaction_outs": [
+                        {
+                            "address": "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+                            "amount": 5
+                        }
+                    ],
+                    "type": "stake"
+                }
+            ]
+        },
+        {
+            "difficulty": 0,
+            "index": 2,
+            "minter_address": "fc15e6f072f6421cdb903da96936c2b0528f752bceb3a7f8b74260149a1b293d647e48c37925f69b0105d28a82e00f3af2bd3e7c5974a43db39887287a585eca",
+            "minter_balance": 50,
+            "previous_hash": "1b521fb7a5c3d86a589caa59a93b46db9ade906ac9ea71efbe93dbd8e07c4fbd",
+            "timestamp": 1635167117.656538,
+            "transactions": [
+                {
+                    "id": "a85c5e0f292e499ca416c562cf749162df9c99aa5471adba39057f2b8911add2",
+                    "transaction_ins": [
+                        {
+                            "signature": "",
+                            "transaction_out_id": "",
+                            "transaction_out_index": 2
+                        }
+                    ],
+                    "transaction_outs": [
+                        {
+                            "address": "fc15e6f072f6421cdb903da96936c2b0528f752bceb3a7f8b74260149a1b293d647e48c37925f69b0105d28a82e00f3af2bd3e7c5974a43db39887287a585eca",
+                            "amount": 5
+                        }
+                    ],
+                    "type": "coinbase"
+                },
+                {
+                    "id": "9ccf4ed8bc7a8a5a35698f809af11693c139b908b65d6325e9e15733f9b2b592",
+                    "transaction_ins": [
+                        {
+                            "signature": "3044022046c45c73e87daa4837e06f7d61827a6213742ed24aa10b4faaefa26329d96611022071353ae28aabf45dccb08ec014e9172241c0ff53f1abf4748b1894d9ec742050",
+                            "transaction_out_id": "08efdf57fa672ca56a4bbf6607681d2a27019d8741e4673adf4dd55ecc354d4d",
+                            "transaction_out_index": 0
+                        }
+                    ],
+                    "transaction_outs": [
+                        {
+                            "address": "db8439eb600af85672a9c2f5d7370fe2798c19ef8fba22ea3ed02567b99cb2d2e708bcc258e7ea7741b44430a7199a8cb9474444be6b458b3bafbb3baa3e31f5",
+                            "amount": 30.0
+                        },
+                        {
+                            "address": "fc15e6f072f6421cdb903da96936c2b0528f752bceb3a7f8b74260149a1b293d647e48c37925f69b0105d28a82e00f3af2bd3e7c5974a43db39887287a585eca",
+                            "amount": 20.0
+                        }
+                    ],
+                    "type": "transfer"
+                }
+            ]
+        }
+    ],
+    "length": 2
+}
+```
+
+
 
 ### Team Details
 ###### Group Number : G56
