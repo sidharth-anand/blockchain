@@ -52,7 +52,8 @@ def handle_p2p_events(event, data):
         elif data['event'] == 'block_created':
             blockchain.block_mining = True
 
-            blockchain.replace_chain(data['chain'])
+            if blockchain.replace_chain(data['chain']):
+                blockchain.transaction_pool = []
 
             blockchain.block_mining = False
 
