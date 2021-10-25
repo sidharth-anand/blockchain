@@ -34,17 +34,11 @@ class Blockchain:
 
     def create_new_block(self, wallet: Wallet):
         """
-        Create a new Block in the Blockchain
-        <model> Block
-         - index : Index of Block in the chain
-         - timestamp : Time of transaction
-         - transactions : List of Transactions tracked before mining the block
-         - proof : Random number which can be used only once, and generated based on the consensus algorithm
-         - previous_hash : Hash value of the previous block in the chain
-
-        :param proof: The proof given by the Proof of Work algorithm
-        :param previous_hash: Hash of previous Block
-        :return: Block Object which is generated
+         - A coinbase transaction is created for the block, where the sender address is '', and the amount transferred is COINBASE_TRANSACTION
+         - A new block is created, where transactions = Coinbase Transaction + Transaction Pool
+         - After the Block is created, transactions are processed
+         - Once the transactions are processed, transaction pool is reset back to []
+         - The last Block of chain is returned from this function
         """
 
         coinbase_transaction = Transaction.generation_coinbase_transaction(wallet.public_key.toString(), self.last_block.index + 1)
@@ -86,25 +80,6 @@ class Blockchain:
     def get_usable_timestamp(self) -> int:
         return round(time.time() / 1000)
 
-    def create_new_transaction(self, wallet: Wallet, recipient: str, amount: float):
-        """
-        Creates a new transaction to go into the next mined Block
-        <model> Transaction
-         - Sender : Address of Sender
-         - Recipient : Address of Recipient
-         - Amount : Transaction Amoount
-
-        :param sender: Address of the Sender
-        :param recipient: Address of the Recipient
-        :param amount: Transaction Amount
-        :return: We return the index of the block that contains the transaction
-        """
-        new_transaction = wallet.create_transaction(recipient, amount, self.unspent_transaction_outs, self.transaction_pool)
-        if new_transaction is not None:
-            self.transaction_pool.append(new_transaction)
-            return self.last_block.index + 1
-        else:
-            return -1
 
     @staticmethod
     def valid_chain(chain: typing.List[Block]) -> typing.Union[typing.List[UnspentTransactionOut], None]:
@@ -128,6 +103,7 @@ class Blockchain:
     def get_accumulated_difficulty(chain: typing.List[Block]) -> int:
         return reduce(lambda a,b: a + 2 ** b.difficulty, chain, 0)
 
+    # This function returns the Last Block in the chain
     @property
     def last_block(self) -> Block:
         return self.chain[-1]
@@ -158,29 +134,6 @@ class Blockchain:
         for transaction in new_pool:
             self.transaction_pool.append(Transaction.from_dict(transaction))
 
-    def generate_proof(self, last_block):
-        """
-         - Let p be the proof of previous block
-         - Let h be the hash of previous block
-         - Let n be the proof of the current block which is to be computed
-        Consensus Algorithm:
-         - Compute the value n such that hash(pnh) ends in 4 zeroes
-
-        :param last_block: last Block in blockchain
-        :return: Valid Proof
-        """
-
-        previous_block_proof = last_block.proof_of_work #p
-        previous_block_hash = last_block.hash() #h
-
-        proof = 0 #n
-        while self.validate_proof(previous_block_proof, proof, previous_block_hash) is False and not self.block_mining:
-            proof += 1
-
-        if self.block_mining == True:
-            return None
-
-        return proof
 
     def get_difficulty(self) -> int:
         if self.last_block.index % DIFFICULTY_ADJUSTMENT_ITNERVAL == 0:
@@ -207,7 +160,7 @@ class Blockchain:
         Verifies the Proof ( Nonce )
         :param previous_block_proof: Proof of the previous block
         :param proof: Given Proof for verification
-        :param previous_block_hash: Hash of the Previous Block
+        :param previous_block_hash: H   ash of the Previous Block
         :return: True if the proof is valid, False if not.
         """
 
