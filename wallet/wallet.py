@@ -10,13 +10,24 @@ from blockchain.constants import CHAIN_ADDRESS
 
 class Wallet():
     def __init__(self) -> None:
+        # Create Private Keys and Public Key from Private key
         self.private_key = PrivateKey()
         self.public_key = self.private_key.publicKey()
 
     def load_keys_from_file(self, filename: str) -> None:
+        # If the node is owner, private key is loaded from wallet.key file
+        # Public Key is created from private key loaded from wallet.key file
         self.private_key = PrivateKey.fromString(open(filename).readlines()[0])
         self.public_key = self.private_key.publicKey()
 
+    # There are 3 types of transactions that are undergone to different recipients and different amounts
+
+    """
+        Validator Transaction
+        - Recipient Address is CHAIN_ADDRESS
+        - Amount is VALIDATOR_AMOUNT
+        - Non-Refundable
+    """
     def validator_transaction(self, recipient_address: str, amount: float, unspent_transaction_outs: typing.List[UnspentTransactionOut], transaction_pool: typing.List[Transaction]) -> typing.Union[Transaction, None]:
         my_address = self.public_key.toString()
         my_unspent_transactions = self.filter_transaction_pool([u for u in unspent_transaction_outs if u.address == my_address], transaction_pool)
@@ -42,6 +53,43 @@ class Wallet():
 
         return transaction
 
+
+    """
+        Stake Coins Transaction
+        - Recipient Address is CHAIN_ADDRESS
+        - Amount is as per the wish of node
+    """
+    def stake_coins_transaction(self, recipient_address: str, amount: float, unspent_transaction_outs: typing.List[UnspentTransactionOut], transaction_pool: typing.List[Transaction]) -> typing.Union[Transaction, None]:
+        my_address = self.public_key.toString()
+        my_unspent_transactions = self.filter_transaction_pool([u for u in unspent_transaction_outs if u.address == my_address], transaction_pool)
+
+        ret = self.transaction_outs_for_amount(my_unspent_transactions, amount)
+        if ret is not None:
+            (included_unspent_transaction_outs, left_over_amount) = ret
+        else:
+            return None
+
+        unsigned_transaction_ins = [TransactionIn(unspent_transaction_out.transaction_out_id, unspent_transaction_out.transaction_out_index, '') for unspent_transaction_out in included_unspent_transaction_outs]
+        transaction_outs = self.create_transaction_outs(recipient_address, amount, left_over_amount)
+
+        transaction = Transaction(unsigned_transaction_ins, transaction_outs, TransactionTypes.STAKE)
+
+        transaction_signatures = self.get_transaction_signatures(transaction, unspent_transaction_outs)
+
+        if transaction_signatures is None:
+            return None
+
+        for i, transaction_in in enumerate(transaction.transaction_ins):
+            transaction.transaction_ins[i] = TransactionIn(transaction_in.transaction_out_id, transaction_in.transaction_out_index, transaction_signatures[i])
+
+        return transaction
+
+
+    """
+        Transfer Coins Transaction
+        - Recipient Address is as per the wish
+        - Amount is as per the wish of node
+    """
     def create_transaction(self, recipient_address: str, amount: float, unspent_transaction_outs: typing.List[UnspentTransactionOut], transaction_pool: typing.List[Transaction]) -> typing.Union[Transaction, None]:
         my_address = self.public_key.toString()
         my_unspent_transactions = self.filter_transaction_pool([u for u in unspent_transaction_outs if u.address == my_address], transaction_pool)
@@ -67,32 +115,6 @@ class Wallet():
 
         return transaction
 
-
-    # TODO: Stake Transaction
-    def stake_coins_transaction(self, recipient_address: str, amount: float, unspent_transaction_outs: typing.List[UnspentTransactionOut], transaction_pool: typing.List[Transaction]) -> typing.Union[Transaction, None]:
-        my_address = self.public_key.toString()
-        my_unspent_transactions = self.filter_transaction_pool([u for u in unspent_transaction_outs if u.address == my_address], transaction_pool)
-
-        ret = self.transaction_outs_for_amount(my_unspent_transactions, amount)
-        if ret is not None:
-            (included_unspent_transaction_outs, left_over_amount) = ret
-        else:
-            return None
-
-        unsigned_transaction_ins = [TransactionIn(unspent_transaction_out.transaction_out_id, unspent_transaction_out.transaction_out_index, '') for unspent_transaction_out in included_unspent_transaction_outs]
-        transaction_outs = self.create_transaction_outs(recipient_address, amount, left_over_amount)
-
-        transaction = Transaction(unsigned_transaction_ins, transaction_outs, TransactionTypes.STAKE)
-
-        transaction_signatures = self.get_transaction_signatures(transaction, unspent_transaction_outs)
-
-        if transaction_signatures is None:
-            return None
-
-        for i, transaction_in in enumerate(transaction.transaction_ins):
-            transaction.transaction_ins[i] = TransactionIn(transaction_in.transaction_out_id, transaction_in.transaction_out_index, transaction_signatures[i])
-
-        return transaction
 
 
     def filter_transaction_pool(self, unspent_transasction_outs: typing.List[UnspentTransactionOut], transaction_pool: typing.List[Transaction]) -> typing.List[UnspentTransactionOut]:
@@ -142,23 +164,46 @@ class Wallet():
 
         return signatures
 
-    def get_account_balance(self, unspent_transaction_outs: typing.List[UnspentTransactionOut]) -> float:
-        return reduce(lambda a,b: a + b.amount, [unspent_transaction_out for unspent_transaction_out in unspent_transaction_outs if unspent_transaction_out.address == self.public_key.toString()], 0)
 
+    """
+        Can account Validate
+        - If there is a transaction which has the type 'VALIDATOR', that shows that
+          the node has undergone a transaction for it to become a validator
+        - Hence, we are checking for a VALIDATOR TransactionType and returning True if it is existing
+    """
     def can_account_validate(self, transactions: typing.List[Transaction]) -> bool:
         for transaction in transactions:
             if transaction.type == TransactionTypes.VALIDATOR and Ecdsa.verify(transaction.id, Signature._fromString(transaction.transaction_ins[0].signature), self.public_key):
                 return True
-        
+
         return False
 
+
+    """
+        Get Account Balance
+        - User’s balance is calculated by scanning the blockchain and aggregating all UTXO belonging to that user/node.
+    """
+    def get_account_balance(self, unspent_transaction_outs: typing.List[UnspentTransactionOut]) -> float:
+        return reduce(
+          lambda a,b: a + b.amount,
+          [unspent_transaction_out
+          for unspent_transaction_out in unspent_transaction_outs
+            if unspent_transaction_out.address == self.public_key.toString()
+          ], 0)
+
+    """
+        Get Account Stake Balance
+        - Amount of coins staked are calculated
+    """
     def get_account_stake(self, transactions: typing.List[Transaction]) -> float:
         stake_amount = 0
 
+        # If transaction type is STAKE, it is considered as a STAKE transaction
+        # We calculate the transaction_outs and if the transaction_out.address == CHAIN_ADDRESS, the transaction_out.amount is added to stake_amount
         for transaction in transactions:
             if transaction.type == TransactionTypes.STAKE and Ecdsa.verify(transaction.id, Signature._fromString(transaction.transaction_ins[0].signature), self.public_key):
                 for transaction_out in transaction.transaction_outs:
                     if transaction_out.address == CHAIN_ADDRESS:
                         stake_amount += transaction_out.amount
-        
+
         return stake_amount

@@ -140,8 +140,6 @@ class Transaction(dict):
     def validate_coinbase_transaction(transaction, block_index: int) -> bool:
         return transaction.type == TransactionTypes.COINBASE and len(transaction.transaction_ins) == 1 and len(transaction.transaction_outs) == 1 and transaction.transaction_ins[0].transaction_out_index == block_index and (transaction.transaction_outs[0].amount == COINBASE_AMOUNT or transaction.transaction_outs[0].amount == OWNER_INIT_AMOUNT)
 
-
-    #TODO: Update this shit
     @staticmethod
     def from_dict(transaction_data: dict):
         return Transaction(transaction_data['recipient'], transaction_data['amount'])

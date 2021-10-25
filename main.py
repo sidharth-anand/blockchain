@@ -18,6 +18,7 @@ from wallet.wallet import Wallet
 
 # Instantiate the Node
 app = Flask(__name__)
+
 # Handle CORS
 CORS(app)
 
@@ -51,13 +52,9 @@ def handle_p2p_events(event, data):
             blockchain.replace_pool(data['pool'])
         elif data['event'] == 'block_created':
             blockchain.block_mining = True
-
             new_chain = blockchain.chain
-            # new_chain.append(Block(len(new_chain) + 1, data['proof'], new_chain[-1].hash(), blockchain.transaction_pool))
-
             if blockchain.valid_chain(new_chain):
                 blockchain.create_new_block(data['proof'])
-
             blockchain.block_mining = False
 
 
@@ -65,6 +62,11 @@ def shutdown(signal, frame):
     raise ExitFromApp
 
 
+"""
+    Chain
+    - This endpoint returns the whole full blockchain
+    - All the blocks with transactions and the length of blockchain is returned as json
+"""
 @app.route('/chain', methods=['GET'])
 def full_chain():
     response = {
@@ -74,52 +76,95 @@ def full_chain():
     return jsonify(response), 200
 
 
+"""
+    Mint
+    - The requirements a node has to fulfil to mint nodes is:
+        - It must be a validator
+        - It must stake some coints before minting
+    - If any of the requirements fail to occur, the minting process is not taken forward
+    - Once the requirements are fulfiled, consensus algorithms is run, block is created and appended to the chain
+"""
 @app.route('/mint', methods=['GET'])
 def mine():
+    # Checking whether the node is a validator or not
     if not wallet.can_account_validate(blockchain.all_transactions):
         return 'You need to be a validator to mint blocks', 200
-    
+
+    # Checking whether any coins are staked by the node or not
     if wallet.get_account_stake(blockchain.all_transactions) == 0:
         return 'You need to stake some coins in order to mint blocks', 200
 
-    # We need to run the consensus algorithm to get the proof for the block that needs to be mined
+    # Creating and minting the block
     new_block = blockchain.create_new_block(wallet)
+
+    # If another minting node finishes the minting process None is returned from the earlier function
     if new_block is None:
         return jsonify('Another node completed mining before this node'), 200
+
     return jsonify('Minting Completed!'), 200
 
 
+"""
+    Get Balance
+    - This endpoint returns the balance amount of coins present in the wallet
+"""
 @app.route('/wallet/balance', methods=['GET'])
 def get_balance():
     return jsonify(wallet.get_account_balance(blockchain.unspent_transaction_outs)), 200
 
+
+"""
+    Get Stake
+    - This endpoint returns the amount of coins that are put on stake by the node
+"""
 @app.route('/wallet/stake', methods=['GET'])
 def get_stake():
     return jsonify(wallet.get_account_stake(blockchain.all_transactions)), 200
 
+
+"""
+    Get Addresss
+    - This endpoint returns the public key of the node's wallet
+"""
 @app.route('/wallet/address', methods=['GET'])
 def get_address():
     return wallet.public_key.toString(), 200
 
+
+"""
+    Is Validator
+    - This endpoint returns true if the given node is a validator
+"""
 @app.route('/wallet/validator', methods=['GET'])
 def is_validator():
     return wallet.can_account_validate(blockchain.all_transactions)
 
 
+"""
+    Create a new transaction
+    - This is a POST Endpoint to create a new transaction between a sender and recipient
+    - The request body contains two paramenters
+        - Recipient - address of the wallet of recipient
+        - Amount - number of coins that are need to be transferred
+
+"""
 @app.route('/transactions/new', methods=['POST'])
 def create_new_transaction():
     values = request.get_json()
 
+    # Validating the values from request body
     if values is None:
         return None, 401
 
+    # Validating the required parameters of the request body
     required = ['recipient', 'amount']
     if not all(k in values for k in required):
         return 'Missing values', 400
 
-    # Create a new Transaction for the block
+    # Create a new Transaction
     transaction = wallet.create_transaction(values['recipient'], float(values['amount']), blockchain.unspent_transaction_outs, blockchain.transaction_pool)
 
+    # If transaction creation is successful, the transaction would be appended to the pool
     if transaction is not None:
         blockchain.transaction_pool.append(transaction)
         return 'Added your transaction to pool', 200
@@ -127,12 +172,24 @@ def create_new_transaction():
         return 'Could not add your transaction', 401
 
 
+"""
+    Create a new validator transaction
+    - This transaction makes the user a Validator
+    - VALIDATOR_AMOUNT is burnt
+        - VALIDATOR_AMOUNT burnt is non-refundable
+        - The amount is transferred to CHAIN_ADDRESS (128 bits of '0')
+"""
 @app.route('/transactions/validator', methods=['POST'])
 def become_a_validator():
+    # Verify if the user is already a validator
     if wallet.can_account_validate(blockchain.all_transactions):
         return 'you are already a validator', 200
 
+    # Create the Validator Transaction, where recipient is CHAIN_ADDRESS and
+    # the amount transferred is VALIDATOR_AMOUNT
     transaction = wallet.validator_transaction(CHAIN_ADDRESS, VALIDATOR_AMOUNT, blockchain.unspent_transaction_outs, blockchain.transaction_pool)
+
+    # If the Validator Transaction is created, it is appended to the transaction pool
     if transaction is not None:
         blockchain.transaction_pool.append(transaction)
         return 'Added your transaction to pool', 200
@@ -141,20 +198,30 @@ def become_a_validator():
         return 'Could not add your transaction', 401
 
 
-# TODO: Complete the Stake Coins Function
+"""
+    Create a new stake transaction
+    - This is a POST Endpoint to create a new transaction to stake coins enabling the user to mint blocks
+    - The request body contains two paramenters
+        - Amount - number of coins that are need to be staked
+
+"""
 @app.route('/transactions/stake', methods=['POST'])
 def stake_coins():
     values = request.get_json()
 
+    # Validating the values from request body
     if values is None:
         return None, 401
 
+    # Validating the required parameters(amount) of the request body
     required = ['amount']
     if not all(k in values for k in required):
         return 'Missing values', 400
 
+    # Create a new stake Transaction to CHAIN_ADDRESS with the 'amount' - that needs to be stakedd
     transaction = wallet.create_transaction(CHAIN_ADDRESS, float(values['amount']), blockchain.unspent_transaction_outs, blockchain.transaction_pool)
 
+    # If transaction creation is successful, the transaction would be appended to the pool
     if transaction is not None:
         blockchain.transaction_pool.append(transaction)
         return 'Added your transaction to pool', 200
@@ -164,11 +231,20 @@ def stake_coins():
     return 'Your Coins has been staked', 200
 
 
+"""
+    Get Transactions Pool
+    - This endpoint returns all the transactions currently in the pool
+    - Once the block is minted, the transaction pool is emptied and this endpoint then returns an empty array
+"""
 @app.route('/transactions/pool', methods=['GET'])
 def unverified_transactions():
     return jsonify(blockchain.transaction_pool), 200
 
 
+"""
+    Get Nodes
+    - This endpoint returns all the nodes connected to the blockchain
+"""
 @app.route('/nodes', methods=['GET'])
 def get_nodes():
     return jsonify(p2pNode.connection_urls), 200
