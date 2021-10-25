@@ -2,32 +2,41 @@
 	import { onMount } from 'svelte';
 	import { SERVER_URL } from '../../constants';
 	import { alertMessage, alertType, showAlert } from '../../store/alert';
-	import { unverifiedTransactions } from '../../store/transactions';
+	import { transactionPool } from '../../store/transactions';
 
 	let error = false;
+	let is_validator = false;
 
 	onMount(async () => {
 		try {
-			const res = fetch(`${SERVER_URL}/transactions/pool`);
+			const res = await fetch(`${SERVER_URL}/transactions/pool`);
+			const res2 = await fetch(`${SERVER_URL}/wallet/validator`);
 			const data = await res.json();
-			unverifiedTransactions.update(() => {
-				return [...data]
+			const data2 = await res2.json();
+
+			console.log(res2);
+
+			is_validator = data2;
+
+			transactionPool.update(() => {
+				return [...data];
 			});
-		} catch(err) {
+		} catch (err) {
 			error = true;
 		}
-	})
+	});
 
 	const mine = async () => {
 		try {
-			const res = await fetch(`${SERVER_URL}/mine`, {
+			const res = await fetch(`${SERVER_URL}/mint`, {
 				headers: {
 					'Content-Type': 'application/json',
 				},
 				method: 'GET',
 			});
-			await res.json();
-			unverifiedTransactions.update(() => {
+			const data = await res.json();
+			console.log(data);
+			transactionPool.update(() => {
 				return [];
 			});
 		} catch (err) {
@@ -47,7 +56,7 @@
 			<div
 				class="col-md-6 d-flex align-items-center justify-content-start justify-content-md-end"
 			>
-				{#if $unverifiedTransactions.length}
+				{#if is_validator && $transactionPool.length}
 					<button on:click={mine} class="btn btn-primary btn-sm">Mine</button>
 				{/if}
 			</div>
@@ -56,20 +65,24 @@
 			<thead>
 				<tr>
 					<th>#</th>
-					<th scope="col">Sender</th>
+					<th scope="col">Type</th>
+					<th scope="col">Amount</th>
 					<th scope="col">Recipient</th>
-					<th scope="col">Amount ($)</th>
 				</tr>
 			</thead>
 			<tbody>
-				{#each $unverifiedTransactions as transaction, i (i)}
+				{#each $transactionPool as transaction, i (i)}
 					<tr>
 						<th scope="row">{i + 1}</th>
 						<td>
-							{transaction.sender}
+							{transaction.type}
 						</td>
-						<td>{transaction.recipient}</td>
-						<td class="text-success">{transaction.amount}</td>
+						<td class="text-success">
+							{transaction?.transaction_outs[0].amount}
+						</td>
+						<td>
+							{transaction.transaction_outs[0].address}
+						</td>
 					</tr>
 				{/each}
 			</tbody>

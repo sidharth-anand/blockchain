@@ -8,6 +8,7 @@
 		try {
 			const res = await fetch(`${SERVER_URL}/nodes`);
 			const data = await res.json();
+			console.log('Linked nodes', data);
 			linkedNodes.update(() => {
 				return [...data];
 			});
