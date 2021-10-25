@@ -145,6 +145,13 @@ def is_validator():
     return jsonify(wallet.can_account_validate(blockchain.all_transactions)), 200
 
 
+"""
+    Shows all the content of a wallet
+    - Wallet Address
+    - Account Balance
+    - Is validator
+    - Staked coins
+"""
 @app.route('/wallet', methods=["GET"])
 def wallet_details():
     balance = wallet.get_account_balance(blockchain.unspent_transaction_outs)

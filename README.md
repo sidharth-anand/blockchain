@@ -49,7 +49,7 @@ After running the main.py
 Launch http://localhost:4000/ in your browser to see the Web App running
 
 There is a Wallet Button in the Navbar, which shows coins that you have in your wallet
-It also shows your wallet address. 
+It also shows your wallet address.
 
 There options on the Web App at first glance.
 1. Chain: List of Blocks with their properties are listed here
@@ -58,13 +58,21 @@ There options on the Web App at first glance.
 4. Linked Nodes: All the registered nodes of the blockchain, which can be registered from the registered node block on the website, are listed here
 5. Resolve Conflicts: Resolve Conflicts by clicking here
 6. Wallet: Shows coins that you have in your wallet account. This also shows your wallet address. When people want to transfer coins you will be needing to provide the address present in your wallet.
-7. Add a new transaction: The Recipient's wallet address, and Amount of the transaction has to be mentioned, and this transaction goes into the Unverified Transactions list. 
+7. Add a new transaction: The Recipient's wallet address, and Amount of the transaction has to be mentioned, and this transaction goes into the Unverified Transactions list.
 8. Mine: You can mine on the Unverified Transactions page to view the transactions on the Verified Transactions Page
 
 
 ### API Documentation
 #### Wallet
 ##### [GET] Wallet
+```
+Shows all the content of a wallet
+  - Wallet Address
+  - Account Balance
+  - Is validator
+  - Staked coins
+```
+
 ```curl
 http://localhost:4000/wallet
 ```
@@ -82,6 +90,9 @@ Sample response
 ```
 
 ##### [GET] Wallet Address
+```
+This endpoint returns the public key of the node's wallet
+```
 ```curl
 http://localhost:4000/wallet/address
 ```
@@ -91,6 +102,9 @@ db8439eb600af85672a9c2f5d7370fe2798c19ef8fba22ea3ed02567b99cb2d2e708bcc258e7ea77
 ```
 
 ##### [GET] Wallet Balance
+```
+This endpoint returns the balance amount of coins present in the wallet
+```
 ```curl
 http://localhost:4000/wallet/balance
 ```
@@ -100,6 +114,9 @@ Sample response
 ```
 
 ##### [GET] Wallet Stake
+```
+This endpoint returns the amount of coins that are put on stake by the node
+```
 ```curl
 http://localhost:4000/wallet/stake
 ```
@@ -109,7 +126,10 @@ Sample response
 ```
 
 ##### [GET] Wallet Check if Validator
-```curl
+```
+This endpoint returns true if the given node is a validator
+```
+```curls
 http://localhost:4000/wallet/validator
 ```
 Sample response
@@ -119,6 +139,16 @@ true
 
 #### Transactions
 ##### [POST] Become a Validator - Transaction
+```
+    Create a new validator transaction
+    - This transaction makes the user a Validator
+    - VALIDATOR_AMOUNT is burnt
+        - VALIDATOR_AMOUNT burnt is non-refundable
+        - The amount is transferred to CHAIN_ADDRESS (128 bits of '0')
+```
+```
+This endpoint returns the amount of coins that are put on stake by the node
+```
 ```curl
 http://localhost:4000/transactions/validator
 ```
@@ -128,6 +158,13 @@ you are already a validator
 ```
 
 ##### [POST] Create a new transaction
+```
+    Create a new transaction
+    - This is a POST Endpoint to create a new transaction between a sender and recipient
+    - The request body contains two paramenters
+        - Recipient - address of the wallet of recipient
+        - Amount - number of coins that are need to be transferred
+```
 ```curl
 http://localhost:4000/transactions/new
 ```
@@ -146,6 +183,12 @@ Sample response
 ```
 
 ##### [POST] Stake Coins
+```
+    Create a new stake transaction
+    - This is a POST Endpoint to create a new transaction to stake coins enabling the user to mint blocks
+    - The request body contains two paramenters
+        - Amount - number of coins that are need to be staked
+```
 ```curl
 http://localhost:4000/transactions/stake
 ```
@@ -161,6 +204,11 @@ Sample response
 ```
 
 ##### [GET] Transaction Pool
+```
+    Get Transactions Pool
+    - This endpoint returns all the transactions currently in the pool
+    - Once the block is minted, the transaction pool is emptied and this endpoint then returns an empty array
+```
 ```curl
 http://localhost:4000/transactions/pool
 ```
@@ -197,6 +245,13 @@ Sample Response
 ```
 
 ##### [GET] Mint Blocks
+```
+- The requirements a node has to fulfil to mint nodes is:
+        - It must be a validator
+        - It must stake some coints before minting
+    - If any of the requirements fail to occur, the minting process is not taken forward
+    - Once the requirements are fulfiled, consensus algorithms is run, block is created and appended to the chain
+```
 ```curl
 http://localhost:4000/mint
 ```
@@ -206,6 +261,11 @@ Sample response
 ```
 
 ##### [GET] Print the chain
+```
+    Chain
+    - This endpoint returns the whole full blockchain
+    - All the blocks with transactions and the length of blockchain is returned as json
+```
 ```curl
 http://localhost:4000/chain
 ```
@@ -326,8 +386,6 @@ Sample response
     "length": 2
 }
 ```
-
-
 
 ### Team Details
 ###### Group Number : G56
