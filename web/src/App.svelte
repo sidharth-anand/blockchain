@@ -26,7 +26,7 @@
 	</div>
 {/if}
 
-<Router>
+<Router primary={false}>
 	<main>
 		<div class="page-container">
 			<div class="page-content py-3 px-5 ms-0">

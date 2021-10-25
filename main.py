@@ -88,11 +88,11 @@ def full_chain():
 def mine():
     # Checking whether the node is a validator or not
     if not wallet.can_account_validate(blockchain.all_transactions):
-        return 'You need to be a validator to mint blocks', 200
+        return jsonify('You need to be a validator to mint blocks'), 400
 
     # Checking whether any coins are staked by the node or not
     if wallet.get_account_stake(blockchain.all_transactions) == 0:
-        return 'You need to stake some coins in order to mint blocks', 200
+        return jsonify('You need to stake some coins in order to mint blocks'), 400
 
     # Creating and minting the block
     new_block = blockchain.create_new_block(wallet)
@@ -218,7 +218,7 @@ def create_new_transaction():
 def become_a_validator():
     # Verify if the user is already a validator
     if wallet.can_account_validate(blockchain.all_transactions):
-        return 'you are already a validator', 200
+        return jsonify('you are already a validator'), 200
 
     transaction = wallet.create_transaction(CHAIN_ADDRESS, VALIDATOR_AMOUNT, blockchain.unspent_transaction_outs, blockchain.transaction_pool, TransactionTypes.VALIDATOR)
     if transaction is not None:
@@ -229,10 +229,10 @@ def become_a_validator():
             'transaction': transaction
         })
 
-        return 'Added your transaction to pool', 200
+        return jsonify('Added your transaction to pool'), 200
 
     else:
-        return 'Could not add your transaction', 401
+        return jsonify('Could not add your transaction'), 401
 
 
 """

@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { SERVER_URL } from '../../constants';
 	import { alertMessage, alertType, showAlert } from '../../store/alert';
+	import { activeTab } from '../../store/tabs';
 	import { transactionPool } from '../../store/transactions';
 
 	let error = false;
@@ -35,10 +36,23 @@
 				method: 'GET',
 			});
 			const data = await res.json();
-			console.log(data);
-			transactionPool.update(() => {
-				return [];
-			});
+			if (`${res.status}`.startsWith('4')) {
+				showAlert.update(() => true);
+				alertType.update(() => 'danger');
+				alertMessage.update(() => data);
+			} else {
+				transactionPool.update(() => {
+					return [];
+				});
+
+				showAlert.update(() => true);
+				alertType.update(() => 'success');
+				alertMessage.update(() => data);
+
+				setTimeout(() => {
+					activeTab.update(() => 'verified transactions');
+				}, 1200);
+			}
 		} catch (err) {
 			showAlert.update(() => true);
 			alertType.update(() => 'danger');

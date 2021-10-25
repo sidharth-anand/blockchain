@@ -2,6 +2,7 @@
 	import { linkedNodes } from '../store/linkedNodes';
 	import NodeIcon from '../icons/NodeIcon.svelte';
 	import { alertMessage, alertType, showAlert } from '../store/alert';
+	import { activeTab } from '../store/tabs';
 	import { SERVER_URL } from '../constants';
 
 	let loading = false;
@@ -29,12 +30,15 @@
 			});
 
 			const data = await res.json();
-			linkedNodes.update(() => {
-				return [...data.total_nodes];
-			});
+			console.log(data);
+
 			showAlert.update(() => true);
 			alertType.update(() => 'success');
 			alertMessage.update(() => data.message || 'Success');
+
+			setTimeout(() => {
+				activeTab.update(() => 'linked nodes');
+			}, 1200);
 			console.log(data);
 		} catch (err) {
 			console.log({ ...err });
