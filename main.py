@@ -253,7 +253,7 @@ def stake_coins():
     # Validating the required parameters(amount) of the request body
     required = ['amount']
     if not all(k in values for k in required):
-        return 'Missing values', 400
+        return jsonify('Missing values'), 400
 
     transaction = wallet.create_transaction(CHAIN_ADDRESS, float(values['amount']), blockchain.unspent_transaction_outs, blockchain.transaction_pool, TransactionTypes.STAKE)
 
@@ -266,11 +266,11 @@ def stake_coins():
             'transaction': transaction
         })
 
-        return 'Added your transaction to pool', 200
+        return jsonify('Added your transaction to pool'), 200
     else:
-        return 'Could not add your transaction', 401
+        return jsonify('Could not add your transaction'), 401
 
-    return 'Your Coins has been staked', 200
+    return jsonify('Your Coins has been staked'), 200
 
 
 """

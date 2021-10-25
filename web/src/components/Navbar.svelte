@@ -16,6 +16,9 @@
 				<Link to="/my-wallet" class="nav-link">Wallet</Link>
 			</li>
 			<li class="nav-item">
+				<Link to="/stake-coins" class="nav-link">Stake Coins</Link>
+			</li>
+			<li class="nav-item">
 				<a
 					href="https://github.com/sidharth-anand/blockchain.git"
 					class="btn text-white fs-3"

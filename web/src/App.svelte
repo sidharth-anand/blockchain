@@ -5,6 +5,7 @@
 	import Navbar from './components/Navbar.svelte';
 	import Footer from './components/Footer.svelte';
 	import WalletPage from './pages/WalletPage.svelte';
+	import StakeCoins from './pages/StakeCoins.svelte';
 
 	$: if ($showAlert) {
 		setTimeout(() => {
@@ -40,6 +41,10 @@
 
 					<Route path="/my-wallet">
 						<WalletPage />
+					</Route>
+
+					<Route path="/stake-coins">
+						<StakeCoins />
 					</Route>
 				</div>
 			</div>
