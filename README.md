@@ -12,10 +12,10 @@ Ensure that you have [Node.js](https://nodejs.org) installed on your machine
   cd web
 ```
 ```bash
-  npm install
+  yarn install
 ```
 ```bash
-  npm run build
+  yarn build
 ```
 
 Ensure that you have [python3](python.org/downloads/) installed on your machine
@@ -32,35 +32,72 @@ Download all the required dependencies for Python
 
 After successfully installing the dependencies, run the main.py file for launching the web app
 
-This command runs the blockchain node on PORT = 4000 as default, so ensure your PORT 4000 to be free
-```bash
+This command runs the blockchain node both on ports 4000 and 4001 as default, so ensure both of these ports are free
+```
   python3 main.py
 ```
 
+In addition to using a port to serve the UI over HTTP, the application also uses a SOCKET_PORT to communicate with other nodes
+
 To create a new node in the blockchain
 ```bash
-  python3 main.py --port=PORT
+  python3 main.py --port=PORT --socket=SOCKET_PORT
 ```
 PORT = New port address for the node to instanstiate
+SOCKET_PORT = Socket port address for the node
+
+Since, in POS, you need to stake some coins to be able to mint blocks, a static owner wallet has already been setup in the Genesis Block. This wallet is configured to be a validator with 50 coins as account balance, and an additional 10 coin stake. To use this account, run
+```
+python3 main.py --owner
+```
 
 ### Functionality
 After running the main.py
 
 Launch http://localhost:4000/ in your browser to see the Web App running
 
-There is a Wallet Button in the Navbar, which shows coins that you have in your wallet
-It also shows your wallet address.
+When you launch any additional nodes, use the register node form and enter `http://localhost:4000` (or the url of the first node you launched) and click on register. This will setup up peer-to-peer communications with all existing nodes. You should now be able to view the full list of nodes in the linked nodes section
 
-There options on the Web App at first glance.
+There is a Wallet Button in the Navbar, which shows coins that you have in your wallet. It also shows your wallet address and whether you are a validator.
+
+The Stake Coins Button allows you to stake some coins on the chain if you are a validator, allowing you to mint blocks.
+
+There exist these options on the Web App at first glance.
 1. Chain: List of Blocks with their properties are listed here
 2. Verified Transactions: List of all verified transactions are listed here
 3. Unverified Transactions: Transactions that are not verified are listed here
 4. Linked Nodes: All the registered nodes of the blockchain, which can be registered from the registered node block on the website, are listed here
-5. Resolve Conflicts: Resolve Conflicts by clicking here
-6. Wallet: Shows coins that you have in your wallet account. This also shows your wallet address. When people want to transfer coins you will be needing to provide the address present in your wallet.
+6. Wallet: Shows coins that you have in your wallet account. This also shows your wallet address. When people want to transfer coins you will be needing to provide the address present in your wallet. Also indicates whether or not you are a validator
 7. Add a new transaction: The Recipient's wallet address, and Amount of the transaction has to be mentioned, and this transaction goes into the Unverified Transactions list.
 8. Mine: You can mine on the Unverified Transactions page to view the transactions on the Verified Transactions Page
+9. Stake Coins: stake some coins on the chain if you are a vlaidator, allowing you to mint blocks.
 
+#### Transactions
+The following transaction types are present in the app
+1. Transfer - Indicates a transfer from one wallet to the next
+2. Validator - Burns 10 coins from a wallet to the chain, and allows the wallet to become a validator
+3. Stake - Transfers coins from a wallet to the chain as stake
+4. Coinbase - Used to setup the ICO for the owner wallet and provide rewards for minting
+
+All of the above transactions are linked to a wallet using Bitcoin's method of UnspentTransactionOuts.
+
+#### POS
+The app uses Ethereum's POS algorithm:
+```
+SHA256(prevhash + address + timestamp) <= 2^256 * stake / diff
+```
+
+You can find this implementation in the `validate_stake` method in `blockchain/blockchain.py`
+
+#### P2P and Consensus
+
+All changes to the chain - adding a transaction, registering a node, minting a new block - are propogated throughout the network of nodes using P2P connections. 
+
+Consensus is achieved among the nodes on which chain to adopt by calculating the Accumulated Difficulty on a chain and not the chain length.
+(Find the implementation in `get_accumulated_difficulty` in `blockchain/blockchain.py`)
+
+Difficulty is increased or decreased based on the constants `BLOCK_GENERATION_INTERVAL` and `DIFFICULTY_ADJUSTMENT_ITNERVAL` in `blockchain/constants.py`
+(See how these constants are used in `get_adjusted_difficulty` in `blockchain/blockchain.py`)
 
 ### API Documentation
 #### Wallet

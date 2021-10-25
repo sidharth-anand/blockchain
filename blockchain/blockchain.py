@@ -155,26 +155,6 @@ class Blockchain:
             return prev_adjusted_block.difficulty
 
     @staticmethod
-    def validate_proof(previous_block_proof, proof, previous_block_hash):
-        """
-        Verifies the Proof ( Nonce )
-        :param previous_block_proof: Proof of the previous block
-        :param proof: Given Proof for verification
-        :param previous_block_hash: H   ash of the Previous Block
-        :return: True if the proof is valid, False if not.
-        """
-
-        """
-        Verification Process of the Proof
-        Based on the consensus algorithm assumed for this blockchain
-        We are finding the value of hash(pnh) and verify if it ends in 4 zeroes
-        """
-
-        number = f'{previous_block_proof}{proof}{previous_block_hash}'.encode()
-        number_hashed = hashlib.sha256(number).hexdigest()
-        return number_hashed[-4:] == "0000"
-
-    @staticmethod
     def validate_stake(previous_hash: str, address: str, timestamp: int, balance: float, difficulty: int) -> bool:
         difficulty = difficulty + 1
 
