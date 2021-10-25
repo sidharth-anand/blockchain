@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { useNavigate } from 'svelte-navigator';
-
 	import { showAlert, alertMessage, alertType } from './../store/alert';
 	import { onMount } from 'svelte';
 
@@ -48,7 +47,11 @@
 					navigate('/');
 				}, 1200);
 			}
-		} catch (err) {}
+		} catch (err) {
+			showAlert.update(() => true);
+			alertType.update(() => 'danger');
+			alertMessage.update(() => err?.message || err || 'Something went wrong');
+		}
 	};
 </script>
 
